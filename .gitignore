@@ -1,0 +1,7 @@
+google_drive/
+parts/
+build/
+*.apk
+*.001
+*.002
+__pycache__/
