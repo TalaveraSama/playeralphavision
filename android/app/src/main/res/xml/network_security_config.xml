@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Muchos paneles XUI.one siguen sirviendo por HTTP en claro (puerto 80/8080).
+  Se permite tráfico claro para cualquier host, igual que hacen los players
+  tipo IPTV; si tu panel tiene TLS puedes quitar usesCleartextTraffic.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

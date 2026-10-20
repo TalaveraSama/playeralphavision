@@ -1,0 +1,32 @@
+{
+  "epg_listings": [
+    {
+      "id": "1010001",
+      "epg_id": 101,
+      "title": "UHJvZ3JhbWEgZW4gY3Vyc28=",
+      "lang": "es",
+      "start": "2026-10-20 14:00:00",
+      "end": "2026-10-20 15:00:00",
+      "description": "VHJhbnNtaXNpw7NuIGVuIGRpcmVjdG8gZGUgcHJ1ZWJhLg==",
+      "channel_id": "ch101",
+      "start_timestamp": "1792504800",
+      "stop_timestamp": "1792508400",
+      "now_playing": 1,
+      "has_archive": 1
+    },
+    {
+      "id": "1010002",
+      "epg_id": 101,
+      "title": "UHLDs3hpbW8gcHJvZ3JhbWE=",
+      "lang": "es",
+      "start": "2026-10-20 15:00:00",
+      "end": "2026-10-20 16:00:00",
+      "description": "UHJvZ3JhbWEgc2lndWllbnRlLg==",
+      "channel_id": "ch101",
+      "start_timestamp": "1792508400",
+      "stop_timestamp": "1792512000",
+      "now_playing": 0,
+      "has_archive": 0
+    }
+  ]
+}

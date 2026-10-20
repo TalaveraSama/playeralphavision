@@ -1,0 +1,29 @@
+{
+  "user_info": {
+    "username": "",
+    "password": "",
+    "message": "Invalid username or password",
+    "auth": 0,
+    "status": "Disabled",
+    "exp_date": null,
+    "is_trial": "0",
+    "active_cons": "1",
+    "created_at": "1789913786",
+    "max_connections": "2",
+    "allowed_output_formats": [
+      "m3u8",
+      "ts"
+    ]
+  },
+  "server_info": {
+    "url": "127.0.0.1",
+    "port": "8099",
+    "https_port": "",
+    "server_protocol": "http",
+    "rtmp_port": "25462",
+    "timezone": "America/Managua",
+    "timestamp_now": 1792505786,
+    "time_now": "2026-10-20 14:16:26",
+    "process": true
+  }
+}

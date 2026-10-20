@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Alpha Vision</string>
+    <string name="login_title">Alpha Vision</string>
+    <string name="login_subtitle">Conecta tu panel XUI.one</string>
+    <string name="server_url">URL del panel (ej. http://panel.tv:8080)</string>
+    <string name="username">Usuario</string>
+    <string name="password">Contraseña</string>
+    <string name="connect">Conectar</string>
+    <string name="tab_live">TV</string>
+    <string name="tab_movies">Películas</string>
+    <string name="tab_series">Series</string>
+    <string name="search">Buscar…</string>
+    <string name="logout">Salir</string>
+    <string name="retry">Reintentar</string>
+    <string name="epg">Guía</string>
+    <string name="no_results">Sin resultados</string>
+    <string name="season">Temporada %1$d</string>
+</resources>

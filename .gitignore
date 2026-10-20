@@ -5,3 +5,16 @@ build/
 *.001
 *.002
 __pycache__/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml
+
+# media generada del mock (se recrea con mock_xui/make_media.sh)
+mock_xui/media/
+build/
+*.jar

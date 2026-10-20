@@ -1,0 +1,60 @@
+{
+  "seasons": [],
+  "info": {
+    "num": 1,
+    "name": "Nicaragua Salvaje",
+    "series_id": 301,
+    "cover": "",
+    "plot": "Documental.",
+    "cast": "Varios",
+    "director": "Anónimo",
+    "genre": "Documental",
+    "releaseDate": "2024-01-15",
+    "last_modified": "1710000000",
+    "rating": "8.2",
+    "rating_5based": 4.1,
+    "backdrop_path": [],
+    "youtube_trailer": "",
+    "episode_run_time": "45",
+    "category_id": "20"
+  },
+  "episodes": {
+    "1": [
+      {
+        "id": "9001",
+        "episode_num": 1,
+        "title": "El río",
+        "container_extension": "mp4",
+        "info": {
+          "plot": "Arranca el documental.",
+          "duration": "45 min",
+          "movie_image": ""
+        }
+      },
+      {
+        "id": "9002",
+        "episode_num": 2,
+        "title": "La selva",
+        "container_extension": "mp4",
+        "info": {
+          "plot": "Selva tropical.",
+          "duration": "45 min",
+          "movie_image": ""
+        }
+      }
+    ],
+    "2": [
+      {
+        "id": "9003",
+        "episode_num": 1,
+        "title": "Volcanes",
+        "container_extension": "mp4",
+        "info": {
+          "plot": "Temporada 2.",
+          "duration": "45 min",
+          "movie_image": ""
+        }
+      }
+    ]
+  }
+}

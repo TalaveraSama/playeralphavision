@@ -1,0 +1,38 @@
+[
+  {
+    "num": 1,
+    "name": "Nicaragua Salvaje",
+    "series_id": 301,
+    "cover": "",
+    "plot": "Documental.",
+    "cast": "Varios",
+    "director": "Anónimo",
+    "genre": "Documental",
+    "releaseDate": "2024-01-15",
+    "last_modified": "1710000000",
+    "rating": "8.2",
+    "rating_5based": 4.1,
+    "backdrop_path": [],
+    "youtube_trailer": "",
+    "episode_run_time": "45",
+    "category_id": "20"
+  },
+  {
+    "num": 2,
+    "name": "La Finca",
+    "series_id": 302,
+    "cover": "",
+    "plot": "Serie rural.",
+    "cast": "Varios",
+    "director": "Anónimo",
+    "genre": "Drama",
+    "releaseDate": "2023-06-01",
+    "last_modified": "1710000000",
+    "rating": "7.0",
+    "rating_5based": 3.5,
+    "backdrop_path": [],
+    "youtube_trailer": "",
+    "episode_run_time": "30",
+    "category_id": "20"
+  }
+]
