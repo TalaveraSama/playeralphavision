@@ -1,0 +1,4 @@
+# render intermediates
+promo/build/
+__pycache__/
+*.pyc
