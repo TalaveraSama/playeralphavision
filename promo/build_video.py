@@ -22,6 +22,18 @@ import os
 import subprocess
 import sys
 
+
+def _ensure_deps():
+    """Make vendored python deps importable (repo-local .tools, then legacy path)."""
+    base = os.path.dirname(os.path.abspath(__file__))
+    for p in (os.path.join(base, "..", ".tools", "pylibs"), "/home/user/tools/pylibs"):
+        p = os.path.abspath(p)
+        if os.path.isdir(p) and p not in sys.path:
+            sys.path.insert(0, p)
+
+
+_ensure_deps()
+
 import numpy as np
 from PIL import Image, ImageFilter
 
@@ -41,7 +53,7 @@ T = 18  # transition length in frames (0.6s)
 
 
 def ffmpeg_exe():
-    sys.path.insert(0, "/home/user/tools/pylibs")
+    _ensure_deps()
     import imageio_ffmpeg
     return imageio_ffmpeg.get_ffmpeg_exe()
 
@@ -134,9 +146,14 @@ def build_graph(logo_y):
     f.append(f"[x3][v5]xfade=transition={TRANS[3]}:duration=0.6:offset={offs[3]:.6f}[x4]")
     f.append("[x4]format=yuv420p[vout]")
     # audio: duck the music under the voice-over, normalize, fade out
-    # (the VO feed must be explicitly split: each link can only be consumed once)
+    # (the VO feed must be padded to the full 30s: sidechaincompress truncates to
+    # its shortest input, which would silence everything after the VO ends; and it
+    # must be split explicitly since each link can only be consumed once)
     f.append("[11:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[mus]")
-    f.append("[12:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,adelay=4200:all=1,asplit=2[vo1][vo2]")
+    f.append(
+        "[12:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
+        "adelay=4200:all=1,apad=whole_len=1440000,asplit=2[vo1][vo2]"
+    )
     f.append("[mus][vo1]sidechaincompress=threshold=0.02:ratio=12:attack=10:release=400:makeup=1[duck]")
     f.append(
         "[duck][vo2]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,"

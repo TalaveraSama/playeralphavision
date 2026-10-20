@@ -41,7 +41,13 @@ y glow neón. Estética high-tech, limpia, luminosa y de alta gama.
 
 ```
 promo/
-├── alpha_vision_promo_30s.mp4   ← ENTREGABLE FINAL
+├── alpha_vision_promo_30s.mp4   ← ENTREGABLE FINAL (master 30s)
+├── scene_clips/                  ← VIDEOS POR ESCENA (piezas independientes)
+│   ├── escena1_problema.mp4       5.0s  · problema
+│   ├── escena2_ultra_fiber.mp4    5.3s  · Ultra Fiber
+│   ├── escena3_iptv.mp4           9.7s  · IPTV
+│   ├── escena4_estabilidad.mp4    5.7s  · estabilidad + 1 Gbps
+│   └── escena5_cta.mp4            6.7s  · logo + CTA
 ├── assets/
 │   ├── logo_alpha.png           logo original (aportado por el cliente)
 │   └── logo_cut.png             logo con alfa + halo (generado)
@@ -52,18 +58,26 @@ promo/
 │   └── music.wav                música sintetizada (30s)
 ├── render_text_cards.py         renderiza la tipografía (PIL → PNG RGBA)
 ├── make_music.py                sintetiza la música (numpy → WAV)
-└── build_video.py               ensambla todo con ffmpeg (filtergraph)
+├── build_video.py               ensambla el master con ffmpeg (filtergraph)
+└── build_scene_clips.py         exporta cada escena como clip independiente
 ```
+
+Cada clip por escena conserva el look exacto del master (Ken Burns, tipografía, logo)
+y su porción de audio de la mezcla final, con fades de 0.25s para reproducción limpia.
 
 ## Cómo regenerar el video
 
-Requisitos: Python 3.11 con `numpy`, `pillow`, `imageio-ffmpeg` y DejaVu Sans.
+Requisitos: Python 3.11 + dependencias vendidas en `.tools/pylibs` (fuera de git):
 
 ```bash
+# desde la raíz del repo (una sola vez)
+python3 -m pip install --target .tools/pylibs numpy pillow imageio-ffmpeg
+
 cd promo
 python3 render_text_cards.py   # tarjetas de texto
 python3 make_music.py          # música 30s
-python3 build_video.py         # render final → alpha_vision_promo_30s.mp4
+python3 build_video.py         # master → alpha_vision_promo_30s.mp4
+python3 build_scene_clips.py   # clips → scene_clips/*.mp4
 ```
 
 Notas técnicas: el texto se compone como PNG con canal alfa (el build estático de ffmpeg

@@ -2,3 +2,4 @@
 promo/build/
 __pycache__/
 *.pyc
+.tools/
