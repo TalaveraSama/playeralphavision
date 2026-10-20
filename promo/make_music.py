@@ -5,6 +5,7 @@ Timeline (seconds):
   0.0 - 4.4   gloomy minor pad + slow pulse (problem)
   3.5 - 5.0   noise/sweep riser into the white-flash transition
   5.0 - 20.0  energetic 120 BPM drop: kick, clap, hats, bass, 16th arps (Ultra Fiber + IPTV)
+  8.5 - 10.0  second build; BIG drop exactly at 10.0s (IPTV block, per the brief)
  20.0 - 25.0  half-time, steady chords (stability)
  25.0 - 30.0  major resolve + final impact, fade-out (CTA)
 """
@@ -62,8 +63,8 @@ def clap(amp=1.0):
     return (x * 0.5 + tail) * amp
 
 
-def hat(amp=1.0, dec=90.0):
-    n = int(0.08 * SR)
+def hat(amp=1.0, dec=90.0, dur=0.08):
+    n = int(dur * SR)
     tt = np.arange(n) / SR
     return hp_noise(n, 8) * np.exp(-tt * dec) * amp
 
@@ -156,19 +157,33 @@ def main():
     c = crash(0.5)
     add(L, c, 5.0)
     add(R, c, 5.002)
+    # second build into the big "segundo 10" drop (IPTV block per the brief)
+    rz2 = riser(1.5, 0.55)
+    add(L, rz2, 8.5)
+    add(R, rz2, 8.5)
+    c2 = crash(0.8)
+    add(L, c2, 10.0)
+    add(R, c2, 10.004)
+    sub_hit = kick(1.1, 95, 33, 1.0)  # sub impact on the drop
+    add(L, sub_hit, 10.0)
+    add(R, sub_hit, 10.0)
     for i in range(int((20.0 - 5.0) / BEAT)):
         t0 = 5.0 + i * BEAT
         k = kick(0.5, 125, 44, 0.95)
         add(L, k, t0)
         add(R, k, t0)
         if i % 2 == 1:
-            cl = clap(0.5)
+            cl = clap(0.5 if t0 < 10.0 else 0.62)
             add(L, cl, t0)
             add(R, cl, t0)
         for j, sub_t in enumerate((0.0, 0.25)):
             h = hat(0.22 if j == 0 else 0.13, 110)
             add(L, h, t0 + sub_t, 1.0 if j == 0 else 0.9)
             add(R, h, t0 + sub_t, 0.85 if j == 0 else 1.0)
+        if t0 >= 10.0:  # open hats on offbeats from the drop onwards
+            oh = hat(0.13, 38, 0.18)
+            add(L, oh, t0 + 0.25, 1.0)
+            add(R, oh, t0 + 0.25, 0.95)
         root = 33
         for ct, _ in chords:
             if t0 >= ct - 1e-6:

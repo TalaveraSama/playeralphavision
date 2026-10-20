@@ -86,6 +86,7 @@ SCENES = {
         dict(f="s3_main.txt", size=72, cx=W // 2, cy=800, spacing=7, colors=WHITE),
         dict(f="s3_sub.txt", size=42, cx=W // 2, cy=910, spacing=3, colors=ORANGE)]),
     "s4": dict(scrim=(620, 780, 140), glow="#2FD4FF", lines=[
+        dict(f="s4_badge.txt", size=30, cx=W // 2, cy=706, spacing=5, colors=CYAN),
         dict(f="s4_main.txt", size=74, cx=W // 2, cy=800, spacing=8, colors=CYAN),
         dict(f="s4_sub.txt", size=44, cx=W // 2, cy=912, spacing=4, colors=WHITE)]),
     "s5": dict(scrim=(640, 820, 160), glow="#FFA23D", lines=[
