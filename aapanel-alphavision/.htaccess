@@ -1,0 +1,8 @@
+# Solo la app (User-Agent propio) puede leer config.json.
+# Cualquier navegador recibe 403. Es ofuscación: el UA va dentro de la app.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_URI} /config\.json$ [NC]
+  RewriteCond %{HTTP_USER_AGENT} !AlphaVision-Player [NC]
+  RewriteRule .* - [F]
+</IfModule>
