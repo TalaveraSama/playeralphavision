@@ -11,6 +11,40 @@ copia el nuevo en esa misma ruta. Si personalizaste `applicationId`, conserva el
 identificador de tu app existente; no lo cambies para una actualización. No copies
 ni reemplaces tus configuraciones de marca con las del código fuente completo.
 
+## Asistente automatico (recomendado para tu primera clave)
+
+Extrae el paquete del asistente en la raiz `alphavision_tv`, respetando las
+carpetas `admin_panel`, `tools` y `android/app`. Conserva tu `applicationId` si
+habias personalizado Gradle. No reemplaces tus JSON de marca.
+
+1. Abre `admin_panel/Crear firma de produccion.cmd`.
+2. Confirma escribiendo `CREAR` solo si NO tienes una firma previa que conservar.
+3. Introduce dos veces una contrasena de al menos 12 caracteres ASCII sin espacios.
+   No se muestra al escribirla. Se usa la misma para almacen y clave.
+4. Genera el almacen en `%USERPROFILE%/AlphaVisionKeys/alphavision-release.jks`,
+   alias `alphavision`, y crea `android/key.properties` como UTF-8 sin BOM.
+5. Comprueba el mensaje LISTO y ejecuta tu `admin_panel/Generar APK.cmd` habitual.
+   El asistente no compila ni publica: tu generador aplica la firma al compilar.
+
+Busca keytool en PATH, JAVA_HOME y rutas habituales del JDK de Android Studio.
+No sobrescribe claves ni configuracion existentes. Si se detiene porque encuentra
+una, conserva esos archivos y revisa los pasos manuales siguientes. Si ya creo
+el JKS pero fallo al escribir propiedades, NO borres el JKS para empezar de nuevo:
+completa key.properties manualmente con esa misma clave y contrasena.
+
+No imprime contrasenas ni las pasa como argumentos de proceso. keytool recibe
+una variable de entorno temporal del proceso; se elimina al terminar. El archivo
+key.properties SI contiene las contrasenas en texto plano, como requiere esta
+configuracion local. No compartas ese archivo. No se cambian permisos del equipo
+ni se cifra automaticamente el almacen: debes protegerlo y hacer respaldos.
+
+El nombre del certificado generado es una etiqueta local (`Alpha Vision Android
+Release`), no acredita una identidad legal. Puedes personalizarlo mediante el
+procedimiento manual si necesitas otros datos.
+
+Validacion del asistente: sintaxis y reglas comprobadas estaticamente; no se pudo
+ejecutar en Windows/PowerShell ni generar/verificar una firma real aqui.
+
 ## 0. Antes de crear una clave
 
 - Si ya publicaste esta app, usa la clave correspondiente existente, no generes
