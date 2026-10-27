@@ -27,7 +27,7 @@
     "heroItems": ""
   },
   "theme": {
-    "active": "nova",
+    "active": "nova3",
     "available": [
       {
         "id": "nova",
@@ -61,8 +61,8 @@
         "id": "nova3",
         "name": "Nova3",
         "layout": "nova",
-        "primaryColor": "#6260FF",
-        "backgroundColor": "#070707",
+        "primaryColor": "#456BFF",
+        "backgroundColor": "#000000",
         "surfaceColor": "#0D0D0F",
         "textColor": "#F5F5F7",
         "brightness": "dark",

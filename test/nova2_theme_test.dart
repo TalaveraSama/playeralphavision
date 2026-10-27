@@ -17,7 +17,7 @@ void main() {
         .resolve('nova2');
   });
 
-  test('Nova2 es independiente y conserva NOVA como tema activo', () {
+  test('Nova2 es independiente y conserva los demás temas', () {
     expect(nova2.id, 'nova2');
     expect(nova2.name, 'Nova2');
     expect(nova2.isNova, isTrue);
@@ -25,7 +25,7 @@ void main() {
     expect(nova2.lightButtons, isTrue);
     expect(ThemeSpec.fromJson(nova2.toJson()).isNova2, isTrue);
     final json = jsonDecode(File('assets/config.json').readAsStringSync());
-    expect(ThemeConfig.fromJson(json['theme']).resolve(null).id, 'nova');
+    expect(ThemeConfig.fromJson(json['theme']).resolve(null).id, 'nova3');
   });
 
   test('el tema publica su identidad cinematográfica', () {

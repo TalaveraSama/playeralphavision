@@ -8,6 +8,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../core/models/epg_entry.dart';
 import '../../widgets/nova/nova_ui.dart';
 import '../../widgets/nova/nova3_live_layout.dart';
+import '../../widgets/nova/nova3_loading.dart';
 import '../../core/models/playable_item.dart';
 import '../../core/config/config_controller.dart';
 import '../../core/state/app_state.dart';
@@ -47,6 +48,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   Timer? _hideTimer;
   bool _showBar = true;
   bool _nova3Fullscreen = false;
+  bool _buffering = true;
+  double? _networkSample;
   bool get _nova3Live => _current.isLive &&
       context.read<ConfigController>().theme.isNova3;
   DateTime? _lastBack;
@@ -101,6 +104,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   Future<void> _load(PlayableItem item) async {
+    if (mounted) setState(() { _buffering = true; _networkSample = null; });
     if (_unavailable && mounted) setState(() => _unavailable = false);
     _startWatchdog();
     await _channel?.invokeMethod('setUrl', <String, dynamic>{'url': item.url, 'headers': widget.headers, 'isLive': item.isLive});
@@ -112,7 +116,16 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       case 'onError':
         _retry();
         break;
+      case 'onBuffering':
+        if (mounted) setState(() => _buffering = call.arguments == true);
+        break;
+      case 'onNetworkSample':
+        if (mounted && call.arguments is num) {
+          setState(() => _networkSample = (call.arguments as num).toDouble());
+        }
+        break;
       case 'onReady':
+        if (mounted) setState(() => _buffering = false);
         _failCount = 0;
         _watchdog?.cancel();
         break;
@@ -540,8 +553,11 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
           video: ColoredBox(color: Colors.black, child: _unavailable
               ? const Center(child: Text('Canal no disponible', style: TextStyle(color: Colors.white)))
               : _textureId == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : Texture(textureId: _textureId!)),
+                  ? Nova3Loading(bytesPerSecond: _networkSample)
+                  : Stack(fit: StackFit.expand, children: <Widget>[
+                      Texture(textureId: _textureId!),
+                      if (_buffering) Nova3Loading(bytesPerSecond: _networkSample),
+                    ])),
           controls: Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
             _pbtn(Icons.skip_previous, () => _playRelative(-1)),
             _pbtn(_paused ? Icons.play_arrow : Icons.pause, _togglePlay),

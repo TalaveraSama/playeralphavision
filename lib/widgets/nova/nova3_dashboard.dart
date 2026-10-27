@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'nova_ui.dart';
 
 import '../../core/models/media_item.dart';
 import '../../core/theme/nova_theme.dart';
@@ -56,22 +58,18 @@ class Nova3Dashboard extends StatelessWidget {
                 ]),
               ),
             ))
-          else SliverPadding(
-            padding: EdgeInsets.fromLTRB(compact ? 12 : 8, 12, compact ? 12 : 24, 0),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: compact ? 1 : 2,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-                childAspectRatio: compact ? 16 / 9 : 1.62,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _MosaicTile(item: items[index], featured: true,
-                    onOpen: () => onOpen(items[index])),
-                childCount: featured,
-              ),
+          else SliverToBoxAdapter(child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 12, 24, 4),
+            child: SizedBox(height: (constraints.maxWidth * (compact ? 0.58 : 0.30)).clamp(160.0, 410.0),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+                Expanded(child: _HeroPager(items: items.take(5).toList(), onOpen: onOpen)),
+                if (!compact && items.length > 1) ...<Widget>[
+                  const SizedBox(width: 4),
+                  Expanded(child: _MosaicTile(item: items[1], featured: true, onOpen: () => onOpen(items[1]))),
+                ],
+              ]),
             ),
-          ),
+          )),
           if (!explore || compact) SliverPadding(
             padding: EdgeInsets.fromLTRB(compact ? 12 : 8, 4, compact ? 12 : 24, 24),
             sliver: SliverGrid(
@@ -124,7 +122,7 @@ class _MosaicTile extends StatelessWidget {
               seed: item.favoriteKey,
               radius: 3,
               cacheWidth: featured ? 960 : 480,
-              fit: BoxFit.cover,
+              fit: item.kind == MediaKind.live ? BoxFit.contain : BoxFit.cover,
             ),
             const DecoratedBox(decoration: BoxDecoration(
               gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -190,4 +188,69 @@ class _PosterShelf extends StatelessWidget {
       );
     });
   }
+}
+
+
+class _HeroPager extends StatefulWidget {
+  const _HeroPager({required this.items, required this.onOpen});
+  final List<MediaItem> items;
+  final ValueChanged<MediaItem> onOpen;
+  @override
+  State<_HeroPager> createState() => _HeroPagerState();
+}
+
+class _HeroPagerState extends State<_HeroPager> {
+  final PageController _pages = PageController();
+  int _page = 0;
+  @override
+  void dispose() { _pages.dispose(); super.dispose(); }
+  @override
+  void didUpdateWidget(covariant _HeroPager oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.items.map((e) => e.favoriteKey).join('|') !=
+        widget.items.map((e) => e.favoriteKey).join('|')) {
+      _page = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _pages.hasClients) _pages.jumpToPage(0);
+      });
+    }
+  }
+  void _go(int page) {
+    if (!_pages.hasClients) return;
+    _pages.animateToPage(page,
+      duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 220),
+      curve: Curves.easeOut);
+  }
+  @override
+  Widget build(BuildContext context) => Focus(
+    onKeyEvent: (node, event) {
+      if (event is! KeyDownEvent) return KeyEventResult.ignored;
+      if (event.logicalKey == LogicalKeyboardKey.arrowRight && _page < widget.items.length - 1) {
+        _go(_page + 1); return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowLeft && _page > 0) {
+        _go(_page - 1); return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    },
+    child: Stack(children: <Widget>[
+      Positioned.fill(child: PageView.builder(controller: _pages,
+        onPageChanged: (page) => setState(() => _page = page),
+        itemCount: widget.items.length,
+        itemBuilder: (context, i) => _MosaicTile(item: widget.items[i], featured: true,
+          onOpen: () => widget.onOpen(widget.items[i])))),
+      Positioned(right: 10, bottom: 8, child: DecoratedBox(
+        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(24)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          for (int i = 0; i < widget.items.length; i++)
+            Semantics(label: 'Destacado ${i + 1}', selected: i == _page,
+              child: NovaFocusable(onTap: () => _go(i), child: SizedBox(width: 28, height: 30,
+                child: Center(child: AnimatedContainer(duration: const Duration(milliseconds: 180),
+                  width: i == _page ? 18 : 6, height: 6,
+                  decoration: BoxDecoration(color: i == _page ? const Color(0xFF456BFF) : Colors.white54,
+                    borderRadius: BorderRadius.circular(8))))))),
+        ]),
+      )),
+    ]),
+  );
 }

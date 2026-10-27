@@ -25,11 +25,11 @@ void main() {
     expect(nova3.isNova2, isFalse);
     expect(nova3.isNova, isTrue);
     expect(ThemeSpec.fromJson(nova3.toJson()).isNova3, isTrue);
-    expect(buildThemeData(nova3).scaffoldBackgroundColor, const Color(0xFF070707));
+    expect(buildThemeData(nova3).scaffoldBackgroundColor, const Color(0xFF000000));
     for (final file in <String>['assets/config.json', 'admin_panel/config.json']) {
       final json = jsonDecode(File(file).readAsStringSync());
       final themes = ThemeConfig.fromJson(json['theme']);
-      expect(themes.resolve(null).id, 'nova');
+      expect(themes.resolve(null).id, 'nova3');
       expect(themes.resolve('nova2').id, 'nova2');
       expect(themes.resolve('nova3').id, 'nova3');
     }

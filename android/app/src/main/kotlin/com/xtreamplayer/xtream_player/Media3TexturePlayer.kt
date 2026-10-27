@@ -13,6 +13,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
@@ -75,6 +76,7 @@ class Media3TexturePlayer(
             }
 
             override fun onPlaybackStateChanged(state: Int) {
+                channel.invokeMethod("onBuffering", state == Player.STATE_BUFFERING)
                 if (state == Player.STATE_READY) channel.invokeMethod("onReady", null)
                 if (state == Player.STATE_ENDED) channel.invokeMethod("onComplete", null)
             }
@@ -82,6 +84,19 @@ class Media3TexturePlayer(
             override fun onTracksChanged(tracks: Tracks) {
                 refreshTracks()
                 channel.invokeMethod("onTracksChanged", null)
+            }
+        })
+        player.addAnalyticsListener(object : AnalyticsListener {
+            override fun onBandwidthEstimate(
+                eventTime: AnalyticsListener.EventTime,
+                totalLoadTimeMs: Int,
+                totalBytesLoaded: Long,
+                bitrateEstimate: Long,
+            ) {
+                // Una medición real del stream, no un contador simulado.
+                if (totalLoadTimeMs > 0 && totalBytesLoaded > 0) {
+                    channel.invokeMethod("onNetworkSample", totalBytesLoaded * 1000.0 / totalLoadTimeMs)
+                }
             }
         })
         channel.setMethodCallHandler(this)

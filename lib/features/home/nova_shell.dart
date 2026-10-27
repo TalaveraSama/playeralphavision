@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/app_info.dart';
 import '../../core/config/config_controller.dart';
 import '../../core/models/media_item.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/nova_theme.dart';
 import '../../widgets/nova/nova_ui.dart';
 import '../../widgets/nova/nova3_top_bar.dart';
+import '../../widgets/nova/nova3_frame.dart';
 import '../catalog/catalog_page.dart';
 import '../guide/guide_page.dart';
 import '../catalog/nova_browse_page.dart';
@@ -16,6 +18,7 @@ import '../favorites/favorites_page.dart';
 import '../search/search_page.dart';
 import '../settings/settings_page.dart';
 import 'nova_discover_page.dart';
+import 'nova3_history_page.dart';
 
 /// Contenedor del diseño NOVA.
 ///
@@ -32,6 +35,7 @@ class NovaShell extends StatefulWidget {
 
 class _NovaShellState extends State<NovaShell> {
   int _index = 0;
+  final GlobalKey<Nova3FrameState> _nova3Frame = GlobalKey<Nova3FrameState>();
   DateTime? _lastBackAt;
   final Set<int> _visited = <int>{0};
 
@@ -50,6 +54,19 @@ class _NovaShellState extends State<NovaShell> {
         MaterialPageRoute<void>(builder: (_) => const SettingsPage()),
       );
 
+  Future<void> _openHistory() => Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => const Nova3HistoryPage()));
+
+  Future<void> _showNotifications() => showDialog<void>(context: context,
+    builder: (context) {
+      final update = context.read<ConfigController>().config.update;
+      return AlertDialog(title: const Text('Notificaciones'),
+        content: Text(update.enabled && update.latestVersion.trim().isNotEmpty
+          ? 'Versión publicada por tu proveedor: ${update.latestVersion}. Consulta las actualizaciones en Perfil.'
+          : 'No hay avisos publicados por tu proveedor.'),
+        actions: <Widget>[TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))]);
+    });
+
   @override
   void initState() {
     super.initState();
@@ -65,9 +82,14 @@ class _NovaShellState extends State<NovaShell> {
   }
 
   bool _onGlobalKey(KeyEvent event) {
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.contextMenu) {
-      _showSectionMenu();
+      if (context.read<ConfigController>().theme.isNova3) {
+        _nova3Frame.currentState?.toggle();
+      } else {
+        _showSectionMenu();
+      }
       return true;
     }
     return false;
@@ -153,6 +175,10 @@ class _NovaShellState extends State<NovaShell> {
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop) return;
+        if (nova3 && (_nova3Frame.currentState?.isOpen ?? false)) {
+          _nova3Frame.currentState?.collapse();
+          return;
+        }
         if (index != 0) {
           _select(0);
           return;
@@ -174,22 +200,23 @@ class _NovaShellState extends State<NovaShell> {
       },
       child: nova3
           ? Scaffold(
+              key: const ValueKey('nova3-sidebar-layout-v2'),
               body: SafeArea(
-                child: Row(children: <Widget>[
-                  _buildRail(tabs, index),
-                  Expanded(child: Column(children: <Widget>[
-                    Nova3TopBar(
-                      showLogo: false,
-                      onSearch: canSearch ? _openSearch : null,
-                      onProfile: _openProfile,
-                      onFavorites: config.features.favorites
-                          ? () => Navigator.of(context).push(MaterialPageRoute<void>(
-                              builder: (_) => const FavoritesPage()))
-                          : null,
-                    ),
-                    Expanded(child: body),
-                  ])),
-                ]),
+                child: Nova3Frame(
+                  key: _nova3Frame,
+                  sidebar: _buildRail(tabs, index),
+                  topBar: Nova3TopBar(
+                    onSearch: canSearch ? _openSearch : null,
+                    onProfile: _openProfile,
+                    onFilter: _showSectionMenu,
+                    onHistory: _openHistory,
+                    onNotifications: _showNotifications,
+                    onFavorites: config.features.favorites
+                        ? () => Navigator.of(context).push(MaterialPageRoute<void>(
+                            builder: (_) => const FavoritesPage())) : null,
+                  ),
+                  child: body,
+                ),
               ),
             )
           : wide && !isTv
@@ -274,12 +301,20 @@ class _NovaShellState extends State<NovaShell> {
                   child: NovaLogo(fontSize: 20, color: nova3 ? Colors.white : null),
                 ),
               ),
-              for (int i = 0; i < tabs.length; i++)
+              for (final int i in <int>[
+                if (nova3 && tabs.length > 1 && tabs[1].label == 'TV') 1,
+                0,
+                for (int j = 1; j < tabs.length; j++)
+                  if (!(nova3 && tabs[j].label == 'TV')) j,
+              ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: NovaFocusable(
                     autofocus: i == 0,
-                    onTap: () => _select(i),
+                    onTap: () {
+                      _select(i);
+                      if (nova3) _nova3Frame.currentState?.collapse();
+                    },
                     child: Container(
                       constraints: BoxConstraints(minHeight: nova3 && MediaQuery.sizeOf(context).height < 500 ? 44 : 50),
                       padding: EdgeInsets.symmetric(horizontal: 10, vertical: nova3 ? 7 : 12),
@@ -293,13 +328,16 @@ class _NovaShellState extends State<NovaShell> {
                         Icon(i == index ? tabs[i].selectedIcon : tabs[i].icon,
                             size: 22, color: i == index ? tokens.accent : tokens.muted),
                         const SizedBox(width: 12),
-                        Expanded(child: Text(tabs[i].label,
+                        Expanded(child: Text(nova3 ? tabs[i].label.toUpperCase() : tabs[i].label,
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
                                 color: i == index ? tokens.text : tokens.muted))),
                       ]),
                     ),
                   ),
                 ),
+              if (nova3) const Padding(
+                padding: EdgeInsets.all(8),
+                child: Text('Nova3 · $kAppVersion', style: TextStyle(fontSize: 10, color: Colors.white38))),
               if (!nova3) ...<Widget>[
               const SizedBox(height: 16),
               if (context.read<ConfigController>().config.features.search)

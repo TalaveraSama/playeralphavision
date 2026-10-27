@@ -328,3 +328,30 @@ Limitaciones de plataforma: algunos sistemas modernos pueden ignorar el bloqueo
 de orientación en ventanas o pantallas grandes; comprobar Android 16/iPadOS en
 hardware real. La app no puede girar físicamente un monitor. Roku sigue sin cliente
 propio en este repositorio: estos cambios no lo convierten en una app Roku.
+
+### Nova3 1.2.39 — lateral colapsable (sustituye las notas de navegación anteriores)
+
+- El preset incluido en el ZIP ahora activa **Nova3 por defecto**. Si el equipo
+  conserva otro tema elegido o el panel remoto fija otro, seleccionar
+  **Perfil → Apariencia → Nova3**. Los otros temas conservan sus armazones.
+- El lateral muestra `Nova3 · 1.2.39` para identificar el APK instalado. Nova3
+  nunca construye una barra inferior: independiente del ancho, resolución o
+  modo de navegación que anuncie el equipo.
+- Derecha desde el menú o seleccionar una sección lo colapsa. Izquierda desde
+  el borde del contenido lo abre. Atrás con el menú abierto lo cierra. El botón
+  menú, el indicador lateral y el botón táctil permiten alternarlo.
+- Tras seis segundos con foco en el contenido, el menú se cierra; mientras el
+  usuario navega por el menú no se autooculta. Las flechas dentro de las filas
+  mantienen el recorrido normal. El carrusel usa puntos seleccionables y swipe.
+- Cabecera desplazable en equipos pequeños: búsqueda, filtro por sección,
+  historial local (con borrado confirmado), lista, perfil, avisos y hora local.
+  Avisos muestra la versión publicada por el proveedor; no es un servicio push.
+- Media3 envía el estado de buffering al spinner de puntos azules y muestras
+  reales de transferencia. El texto KB/s es una **estimación de la última
+  muestra**, no velocidad instantánea. Antes de medir se muestra «Conectando…».
+- Versión `1.2.39+1043`. El script de marca ya no rebaja esa versión si el panel
+  contiene una versión anterior; `-Version` continúa siendo una elección explícita.
+
+Validación pendiente en SDK: `flutter analyze`, `flutter test`, en especial
+`test/nova3_frame_test.dart`, y APK en teléfono y TV. Las validaciones de sintaxis
+no reemplazan la compilación ni verifican el funcionamiento real de Media3.

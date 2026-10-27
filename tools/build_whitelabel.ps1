@@ -259,7 +259,8 @@ $currentBuild = [int]$match.Groups[2].Value
 $targetVersion = $currentVersion
 if ($Version) {
   $targetVersion = $Version
-} elseif ($config.update.enabled -and $config.update.latestVersion) {
+} elseif ($config.update.enabled -and $config.update.latestVersion -and
+          ([version]$config.update.latestVersion -gt [version]$currentVersion)) {
   $targetVersion = $config.update.latestVersion
 }
 
