@@ -651,7 +651,48 @@ function draw(){
         Requiere APK 1.2.42 o posterior. Pulsa Guardar en el servidor.</div>
     </section>`;
   else if (tab === 'anuncios') {
-    h = `<section><h2>Anuncios</h2>
+    h = `<section><h2>Anuncios · empieza aquí</h2>
+      <p>No necesitas llenar todas las casillas. Para un aviso sobre el vídeo basta con <b>Tipo: message</b>, <b>Texto</b> y <b>Activo</b>.</p>
+      <button class="primary" onclick="loadAdDemo()">✨ Cargar 3 avisos de demostración</button>
+      <button onclick="removeAdDemo()">Quitar avisos demo</button>
+      <div class="hint">La demo añade mensajes sin borrar tus anuncios. Activa Overlay y pausa las otras ubicaciones para esta prueba.
+        Nada se publica hasta pulsar <b>Guardar en el servidor</b>.</div>
+      <details style="margin-top:16px"><summary><b>📖 Manual rápido: qué rellenar y para qué sirve cada casilla</b></summary>
+        <h3>1 · Prueba sin imágenes ni enlaces</h3>
+        <p>Pulsa Cargar demo → confirma → Guardar en el servidor → abre de nuevo la app y reproduce un vídeo con <b>Media3/ExoPlayer</b>.
+          Verás mensajes de bienvenida, noche de cine y cuidado de la vista. Rotan cada 12 segundos durante hasta 60 segundos,
+          siempre que no se hayan agotado los topes del dispositivo.</p>
+        <h3>2 · Tu primer anuncio real</h3>
+        <p>Pulsa Añadir aviso de texto sobre el vídeo, escribe tu mensaje y guarda. Ejemplo:
+          <b>¡Hoy es noche de cine! Prepara tus palomitas y descubre una nueva historia.</b></p>
+        <h3>3 · Interruptores y ubicaciones</h3>
+        <ul><li><b>Anuncios activados:</b> interruptor general. Apagado = no sale publicidad.</li>
+          <li><b>Avisos sobre Media3:</b> permite la franja del reproductor actual. Necesita también Overlay activo.</li>
+          <li><b>Overlay:</b> aviso encima del vídeo, sin detenerlo. Acepta texto e imagen; no reproduce vídeos publicitarios encima.</li>
+          <li><b>Interstitial:</b> anuncio de pantalla completa antes de abrir el reproductor.</li>
+          <li><b>Banner / Preroll:</b> opciones del esquema compartido; activarlas no garantiza que cada pantalla o motor las implemente.
+            Para esta prueba usa únicamente Overlay.</li>
+          <li><b>Tope por hora:</b> impresiones máximas de esa ubicación en cada dispositivo, no cantidad de usuarios.
+            Con 2/h la franja dejará de salir después de dos impresiones hasta la siguiente hora.</li></ul>
+        <h3>4 · Campos del anuncio</h3>
+        <ul><li><b>message:</b> solo necesita Texto. Título opcional; no requiere URL.</li>
+          <li><b>image:</b> necesita una URL de imagen accesible o imagen base64. Texto opcional. No uses una página web como URL de imagen.</li>
+          <li><b>video:</b> necesita URL directa del archivo de vídeo; no un enlace de YouTube. No se usa en esta franja Overlay.</li>
+          <li><b>Etiqueta:</b> nombre interno para reconocerlo. <b>Activo:</b> permite mostrar ese anuncio.</li>
+          <li><b>Opciones avanzadas:</b> ID único para contar impresiones; enlace opcional (la franja informativa no lo abre);
+            duración y tiempo de cierre para pantalla completa; peso para selección de anuncios, no para ordenar la rotación Overlay;
+            máximo diario vacío = sin límite diario. No cambies el ID para eludir topes.</li></ul>
+        <h3>5 · Tiempo de la franja</h3>
+        <p><b>Rotación</b> cambia de anuncio. <b>Franja visible</b> limita cuánto tiempo aparece desde abrir/cambiar el contenido.
+          0 permite mantener la franja disponible, pero <b>no anula los topes</b>. Las ubicaciones comparten lista de anuncios;
+          no hay una ubicación individual asignada a cada creativo.</p>
+        <h3>6 · Si no aparece</h3>
+        <p>Revisa Guardar, remoteConfigUrl, APK 1.2.42 o posterior, motor Media3, ambos interruptores y Overlay,
+          Texto/URL, Activo y los topes diarios/horarios. Reabre la app para cargar la configuración.
+          La vista previa del panel no prueba la descarga remota ni reinicia contadores.</p>
+        <p>El aviso de <b>4 horas / Consejos</b> se configura en <b>Avisos y descanso</b>; no es publicidad y no requiere esta demo.</p>
+      </details>
+    </section><section><h2>Configuración de anuncios</h2>
       ${chk('Anuncios activados','ads.enabled')}${chk('Avisos sobre Media3 / ExoPlayer','ads.inPlayer')}
       <div class="row">${inp('Segundos por anuncio (rotación)','ads.rotationSeconds','number')}${inp('Franja visible en el reproductor (s, 0 = fija)','ads.inPlayerSeconds','number')}</div>
       <div class="hint"><b>Tamaños de imagen (TV):</b> Banner <b>728×90</b> · Interstitial <b>1920×1080</b> · Preroll <b>1280×720</b> (16:9) · Overlay <b>400×225</b>.
@@ -701,6 +742,7 @@ function draw(){
     if (el.type === 'number') v = v === '' ? null : Number(v);
     set(el.dataset.p, v);
     if (el.dataset.p === 'theme.active') draw();
+    if (/^ads\.ads\.\d+\.type$/.test(el.dataset.p)) draw();
   }));
 }
 
@@ -708,26 +750,34 @@ const plc = (title,key) => `<div class="ad"><h3>${title}</h3>
   <label>Tope por hora</label><input type="number" data-p="ads.placements.${key}.maxPerHour" value="${esc(get('ads.placements.'+key+'.maxPerHour'))}">
   <div class="check"><input type="checkbox" data-p="ads.placements.${key}.enabled" ${get('ads.placements.'+key+'.enabled')?'checked':''}><span>Activo</span></div></div>`;
 
-const adHtml = (ad,i) => { const p='ads.ads.'+i+'.'; return `<div class="ad">
-  <h3>Anuncio ${i+1} <span class="pill">${esc(ad.type||'image')}</span>
+const adHtml = (ad,i) => {
+  const p='ads.ads.'+i+'.';
+  const isMessage = ad.type === 'message';
+  return `<div class="ad">
+  <h3>${esc(ad.label || 'Anuncio '+(i+1))} <span class="pill">${esc(ad.type||'image')}</span>
     <button class="mini" style="float:right" onclick="delAd(${i})">Quitar</button></h3>
-  <div class="row3">
-    <div><label>Id</label><input type="text" data-p="${p}id" value="${esc(ad.id)}"></div>
-    <div><label>Tipo</label><select data-p="${p}type">${['image','video','message'].map(v=>`<option value="${v}" ${ad.type===v?'selected':''}>${v}</option>`).join('')}</select></div>
-    <div><label>Etiqueta</label><input type="text" data-p="${p}label" value="${esc(ad.label)}"></div>
+  <div class="row">
+    <div><label>Tipo de anuncio</label><select data-p="${p}type">${['image','video','message'].map(v=>`<option value="${v}" ${ad.type===v?'selected':''}>${v==='message'?'message · Solo texto':v==='image'?'image · Imagen':'video · Vídeo'}</option>`).join('')}</select></div>
+    <div><label>Etiqueta interna</label><input type="text" data-p="${p}label" value="${esc(ad.label)}" placeholder="Ej.: Promoción del fin de semana"></div>
   </div>
-  <label>Archivo o URL (URL o base64)</label><input type="text" data-p="${p}mediaUrl" value="${esc(ad.mediaUrl)}">
-  <div class="hint">Tamaño según dónde salga: banner 728×90 · interstitial 1920×1080 · preroll 1280×720 · overlay 400×225.</div>
-  <div class="row"><div><label>Enlace</label><input type="text" data-p="${p}clickUrl" value="${esc(ad.clickUrl)}"></div>
-  <div><label>Título</label><input type="text" data-p="${p}title" value="${esc(ad.title)}"></div></div>
-  <label>Texto (avisos)</label><textarea data-p="${p}text">${esc(ad.text)}</textarea>
-  <div class="row3">
-    <div><label>Duración (s)</label><input type="number" data-p="${p}durationSec" value="${esc(ad.durationSec)}"></div>
-    <div><label>Cerrar a los (s)</label><input type="number" data-p="${p}skipAfterSec" value="${esc(ad.skipAfterSec)}"></div>
-    <div><label>Peso</label><input type="number" data-p="${p}weight" value="${esc(ad.weight)}"></div>
-  </div>
-  <label>Máximo diario en este dispositivo (vacío = sin límite)</label><input type="number" min="0" data-p="${p}frequencyCapPerDay" value="${esc(ad.frequencyCapPerDay)}">
+  ${isMessage ? '<div class="hint">Solo texto: no necesitas imagen, vídeo ni enlace.</div>' :
+    `<label>URL directa del ${ad.type==='video'?'vídeo':'archivo de imagen'} (obligatoria)</label><input type="text" data-p="${p}mediaUrl" value="${esc(ad.mediaUrl)}" placeholder="https://tu-servidor/archivo.${ad.type==='video'?'mp4':'jpg'}">
+    <div class="hint">Imagen: Overlay 400×225 · Banner 728×90 · pantalla completa 1920×1080. Los vídeos publicitarios no se muestran encima del vídeo principal.</div>`}
+  <label>Título (opcional)</label><input type="text" data-p="${p}title" value="${esc(ad.title)}" placeholder="Ej.: Tu próxima historia empieza aquí">
+  <label>${isMessage?'Texto del aviso (obligatorio)':'Texto (opcional)'}</label><textarea data-p="${p}text" placeholder="Escribe aquí lo que verá el usuario…">${esc(ad.text)}</textarea>
   <div class="check"><input type="checkbox" data-p="${p}enabled" ${ad.enabled!==false?'checked':''}><span>Activo</span></div>
+  ${isMessage ? `<div style="padding:14px;background:#252b36;color:#fff;border-left:4px solid #00a9e8;border-radius:6px;margin:12px 0"><small>VISTA PREVIA · ejemplo, no emisión real</small><br>
+    <b>${esc(ad.title||'')}</b> ${esc(ad.text||'Aquí aparecerá tu mensaje.')}<br><button class="mini" style="margin-top:8px" onclick="draw()">Actualizar vista previa</button></div>` : ''}
+  <details><summary>Opciones avanzadas · normalmente puedes dejarlas como están</summary>
+    <label>ID único (no lo repitas)</label><input type="text" data-p="${p}id" value="${esc(ad.id)}">
+    <label>Enlace opcional (no se abre desde la franja Overlay)</label><input type="text" data-p="${p}clickUrl" value="${esc(ad.clickUrl)}">
+    <div class="row3">
+      <div><label>Duración pantalla completa (s)</label><input type="number" data-p="${p}durationSec" value="${esc(ad.durationSec)}"></div>
+      <div><label>Permitir cerrar pantalla completa a los (s)</label><input type="number" data-p="${p}skipAfterSec" value="${esc(ad.skipAfterSec)}"></div>
+      <div><label>Peso de selección (no orden Overlay)</label><input type="number" data-p="${p}weight" value="${esc(ad.weight)}"></div>
+    </div>
+    <label>Máximo diario por dispositivo (vacío = sin límite)</label><input type="number" min="0" data-p="${p}frequencyCapPerDay" value="${esc(ad.frequencyCapPerDay)}">
+  </details>
 </div>`; };
 
 function addAd(){
@@ -746,6 +796,41 @@ function addMessageAd(){
   S.ads.placements.overlay = S.ads.placements.overlay || {maxPerHour:2};
   S.ads.placements.overlay.enabled = true;
   if (!(S.ads.placements.overlay.maxPerHour > 0)) S.ads.placements.overlay.maxPerHour = 2;
+  draw();
+}
+// Stable reserved IDs make loading the demo idempotent without touching real ads.
+const AD_DEMO_IDS = ['demo-nova-bienvenida', 'demo-nova-cine', 'demo-nova-pausa'];
+function loadAdDemo(){
+  if (!confirm('Añadir 3 mensajes demo sin borrar tus anuncios. Se activará Overlay (12/h, 60 s, rotación 12 s) y se pausarán Banner, Interstitial y Preroll. Los demás anuncios activos también pueden rotar. Solo se publicará al Guardar. ¿Continuar?')) return;
+  S.ads = S.ads || {};
+  S.ads.ads = S.ads.ads || [];
+  const demos = [
+    {id:AD_DEMO_IDS[0],label:'DEMO · Bienvenida',title:'Bienvenido a tu momento favorito',text:'Desconecta de la rutina. Elige una historia y disfruta a tu manera.'},
+    {id:AD_DEMO_IDS[1],label:'DEMO · Noche de cine',title:'Hoy el mejor plan está en casa',text:'Palomitas listas, luces bajas y una película por descubrir. ¡Que empiece la función!'},
+    {id:AD_DEMO_IDS[2],label:'DEMO · Cuida tu vista',title:'Una pequeña pausa también es parte del plan',text:'Aparta la mirada de la pantalla unos segundos y relaja tus ojos. Tu bienestar también importa.'}
+  ];
+  for (const demo of demos) {
+    if (!S.ads.ads.some(ad => ad.id === demo.id)) S.ads.ads.push(Object.assign({
+      type:'message',mediaUrl:'',clickUrl:'',durationSec:12,skipAfterSec:0,weight:1,
+      frequencyCapPerDay:null,enabled:true,
+      targeting:{mediaTypes:[],categories:[],keywords:[],hoursFrom:null,hoursTo:null}
+    },demo));
+  }
+  S.ads.enabled = true; S.ads.inPlayer = true;
+  S.ads.rotationSeconds = 12; S.ads.inPlayerSeconds = 60;
+  S.ads.placements = S.ads.placements || {};
+  for (const key of ['banner','interstitial','preroll']) {
+    S.ads.placements[key] = Object.assign({}, S.ads.placements[key], {enabled:false});
+  }
+  S.ads.placements.overlay = {enabled:true,maxPerHour:12};
+  draw();
+  alert('Demo preparada, todavía no publicada. Pulsa Guardar en el servidor. Después reabre la app y reproduce con Media3/ExoPlayer.');
+}
+function removeAdDemo(){
+  if (!confirm('Quitar solo los 3 avisos con ID de demo. Si quedan anuncios reales, conservarán los ajustes activos de la prueba. Pulsa Guardar después. ¿Continuar?')) return;
+  if (!S.ads) return;
+  S.ads.ads = (S.ads.ads || []).filter(ad => !AD_DEMO_IDS.includes(ad.id));
+  if (!S.ads.ads.length) { S.ads.enabled = false; S.ads.inPlayer = false; }
   draw();
 }
 function delAd(i){ S.ads.ads.splice(i,1); draw(); }
