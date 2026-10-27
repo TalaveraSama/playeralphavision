@@ -36,9 +36,9 @@ aapanel-novatv/
    `chown -R www:www aapanel-novatv` y `chmod -R 775 aapanel-novatv`
    (si no, no podrá guardar `config.json` ni subir APK).
 4. Abre `https://tudominio.com/aapanel-novatv/` en el navegador.
-5. Opcional: en `index.php`, pon una clave en `$KEY = 'tu-clave';` y entra con
-   `.../aapanel-novatv/index.php?k=tu-clave`. También puedes proteger la carpeta
-   con contraseña desde aaPanel.
+5. Cambia `$PASSWORD` en `index.php` antes de publicarlo. Al reemplazar una
+   versión anterior, conserva tu contraseña personalizada. El panel usa inicio
+   de sesión; también puedes proteger la carpeta desde aaPanel.
 
 ## 2. Enlazar la app con el panel (una sola vez)
 
@@ -112,3 +112,39 @@ como una app nueva.
   (Website → tu sitio → Password protection).
 - `config.json` y `updates/*.apk` siguen siendo públicos a propósito: son los que
   descargan la app y las actualizaciones. Lo privado es el panel (`index.php`).
+
+## Temas NOVA, Nova2 y Nova3 — actualización del index
+
+La APK **no contiene el panel web de administración**. Incluye Perfil/Ajustes y
+un selector local de apariencia. El panel de administración es este `index.php`
+que se instala en tu servidor PHP y publica `config.json` para las APK enlazadas.
+
+Para actualizar un panel que solo muestra NOVA y Ámbar:
+
+1. Guarda una copia de tu `index.php` y `config.json` actuales.
+2. En el nuevo `index.php`, conserva tu `$PASSWORD` personalizado.
+3. Sustituye **solo `index.php`** en la carpeta del panel de aaPanel. No borres
+   `config.json`, `.htaccess`, `updates/` ni los APK que ya publicaste.
+4. Recarga el navegador (Ctrl+F5). Abre **Diseño → Tema que carga la app**.
+5. Selecciona **Nova3 (nova3)** o pulsa **Nova3 · menú lateral TV**.
+6. Pulsa **Guardar en el servidor**. Ese paso publica la lista actualizada de
+   temas y el predeterminado en `config.json`.
+7. Reinicia la app. Si elegiste un tema manualmente en ese equipo, entra en
+   **Perfil → Apariencia → Volver al tema de la marca** para seguir el panel.
+
+El panel agrega Nova2/Nova3 a configuraciones antiguas por ID, sin cambiar el tema
+activo existente, los colores personalizados, el servidor IPTV ni los enlaces de
+actualización. Para instalaciones nuevas, el predeterminado es Nova3. Los atajos
+de colores editan el tema seleccionado, no el primer tema de la lista.
+
+No necesitas recompilar para elegir como predeterminado un tema que ya está en
+la APK. Una APK anterior a Nova2/Nova3 sí necesita actualizarse para mostrar esos
+diseños. Debe estar enlazada al `remoteConfigUrl` de este panel.
+
+Pruebas del panel:
+
+```sh
+node tools/check_panel_theme_ui.js
+php tools/test_panel_themes.php
+php -l aapanel-alphavision/index.php
+```

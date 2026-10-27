@@ -117,12 +117,22 @@ function nova_default(): array {
       'hideServerField' => true, 'heroSource' => 'mixed', 'heroMode' => 'auto', 'heroCategories' => '', 'heroItems' => '', 'showLiveSection' => true,
     ],
     'theme' => [
-      'active' => 'nova',
+      'active' => 'nova3',
       'available' => [[
         'id' => 'nova', 'name' => 'NOVA', 'layout' => 'nova', 'primaryColor' => '#2FE0C0',
         'backgroundColor' => '#0A0F1A', 'surfaceColor' => '#141D2E', 'textColor' => '#FFFFFF',
         'brightness' => 'dark', 'useHero' => true, 'cardRadius' => 14,
         'lightButtons' => false, 'heroTint' => '#0E1626',
+      ], [
+        'id' => 'nova2', 'name' => 'Nova2', 'layout' => 'nova', 'primaryColor' => '#A78BFA',
+        'backgroundColor' => '#08070E', 'surfaceColor' => '#171322', 'textColor' => '#F8F7FC',
+        'brightness' => 'dark', 'useHero' => true, 'cardRadius' => 8,
+        'lightButtons' => true, 'heroTint' => '#251044',
+      ], [
+        'id' => 'nova3', 'name' => 'Nova3', 'layout' => 'nova', 'primaryColor' => '#456BFF',
+        'backgroundColor' => '#000000', 'surfaceColor' => '#0D0D0F', 'textColor' => '#F5F5F7',
+        'brightness' => 'dark', 'useHero' => true, 'cardRadius' => 3,
+        'lightButtons' => false, 'heroTint' => '#090909',
       ], [
         'id' => 'ambar', 'name' => 'Ámbar', 'layout' => 'rows', 'primaryColor' => '#F0A732',
         'backgroundColor' => '#0D0B07', 'surfaceColor' => '#1A1610', 'textColor' => '#FFF6E8',
@@ -153,16 +163,45 @@ function nova_default(): array {
   ];
 }
 
-function nova_load(string $file): array {
+// Las listas de temas se migran por ID, nunca por posición: un config antiguo
+// puede tener solo NOVA/Ámbar, en otro orden, o temas de marca personalizados.
+function nova_normalize(array $data): array {
+  if (isset($data['theme']) && !is_array($data['theme'])) $data['theme'] = [];
   $default = nova_default();
-  if (!is_file($file)) return $default;
+  $config = array_replace_recursive($default, $data);
+  $presets = [];
+  foreach ($default['theme']['available'] as $theme) $presets[$theme['id']] = $theme;
+  $saved = $data['theme']['available'] ?? [];
+  $themes = [];
+  if (is_array($saved)) {
+    foreach ($saved as $theme) {
+      if (!is_array($theme) || !is_string($theme['id'] ?? null)) continue;
+      $id = trim($theme['id']);
+      if ($id === '' || isset($themes[$id])) continue;
+      $theme['id'] = $id;
+      $themes[$id] = array_replace($presets[$id] ?? [], $theme);
+    }
+  }
+  foreach ($presets as $id => $theme) {
+    if (!isset($themes[$id])) $themes[$id] = $theme;
+  }
+  // Estos IDs identifican armazones que requieren el layout NOVA en la APK.
+  foreach (['nova2', 'nova3'] as $id) $themes[$id]['layout'] = 'nova';
+  $config['theme']['available'] = array_values($themes);
+  $active = $data['theme']['active'] ?? $default['theme']['active'];
+  $config['theme']['active'] = is_string($active) && isset($themes[$active])
+      ? $active : $default['theme']['active'];
+  return $config;
+}
+
+function nova_load(string $file): array {
+  if (!is_file($file)) return nova_normalize([]);
   $data = json_decode((string)file_get_contents($file), true);
-  if (!is_array($data)) return $default;
-  return array_replace_recursive($default, $data);
+  return nova_normalize(is_array($data) ? $data : []);
 }
 
 function nova_save(string $file, array $data): bool {
-  $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  $json = json_encode(nova_normalize($data), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   return $json !== false && file_put_contents($file, $json . "\n", LOCK_EX) !== false;
 }
 
@@ -234,7 +273,7 @@ if ($action !== '') {
       $raw  = (string)@file_get_contents((string)$_FILES['config']['tmp_name']);
       $data = json_decode($raw, true);
       if (!is_array($data)) nova_out(['ok' => false, 'error' => 'El archivo no es un config.json válido']);
-      nova_save($CONFIG, $data);
+      if (!nova_save($CONFIG, $data)) nova_out(['ok' => false, 'error' => 'No se pudo guardar config.json (revisa permisos)']);
       nova_log('Configuración restaurada desde archivo');
       nova_out(['ok' => true]);
 
@@ -244,8 +283,8 @@ if ($action !== '') {
     case 'save':
       $body = json_decode((string)file_get_contents('php://input'), true);
       if (!is_array($body)) nova_out(['ok' => false, 'error' => 'JSON no válido']);
-      $config = array_replace_recursive(nova_default(), $body);
-      nova_save($CONFIG, $config);
+      $config = nova_normalize($body);
+      if (!nova_save($CONFIG, $config)) nova_out(['ok' => false, 'error' => 'No se pudo guardar config.json (revisa permisos)']);
       nova_log('Configuración guardada');
       nova_out(['ok' => true, 'urls' => nova_urls()]);
 
@@ -537,7 +576,8 @@ function draw(){
     </section>`;
   }
   else if (tab === 'diseno') h = `
-    <section><h2>Diseño NOVA</h2>
+    <section><h2>Temas de la app</h2>
+      <div class="hint">Predeterminado de la marca: se aplica al arrancar en los equipos que usan el tema de la marca. Si alguien eligió un tema en la APK, debe pulsar «Volver al tema de la marca» en Perfil → Apariencia. Nova2/Nova3 requieren una APK que ya los incluya.</div>
       <div class="row">
         <div><label>Tema que carga la app</label>
           <select data-p="theme.active">
@@ -545,7 +585,7 @@ function draw(){
           </select>
         </div>
         <div><label>Estilo de catalogo del tema</label>
-          <select data-p="${t}layout">
+          <select data-p="${t}layout" ${['nova2','nova3'].includes(String(S.theme.active))?'disabled':''}>
             ${['nova','rows','grid'].map(v=>`<option value="${v}" ${String(get(t+'layout'))===v?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
@@ -560,7 +600,12 @@ function draw(){
         <div><label>Radio de tarjetas</label><input type="number" data-p="${t}cardRadius" value="${esc(get(t+'cardRadius'))}"></div>
         <div><label>Acento de la marca</label><input type="color" data-p="branding.primaryColor" value="${esc(get('branding.primaryColor'))}"></div>
       </div>
-      <div class="hint">Atajos:
+      <div class="hint">Elegir tema predeterminado (pulsa Guardar después):
+        <button class="mini" onclick="selectTheme('nova')">NOVA</button>
+        <button class="mini" onclick="selectTheme('nova2')">Nova2 · cinematográfico</button>
+        <button class="mini" onclick="selectTheme('nova3')">Nova3 · menú lateral TV</button>
+      </div>
+      <div class="hint">Colores del tema seleccionado:
         <button class="mini" onclick="preset('#2FE0C0','#0A0F1A','#141D2E')">NOVA</button>
         <button class="mini" onclick="preset('#2F6BFF','#0B0F17','#151C28')">Azul noche</button>
         <button class="mini" onclick="preset('#E50914','#0B0B0B','#161616')">Rojo</button>
@@ -632,6 +677,7 @@ function draw(){
     let v = el.type === 'checkbox' ? el.checked : el.value;
     if (el.type === 'number') v = v === '' ? null : Number(v);
     set(el.dataset.p, v);
+    if (el.dataset.p === 'theme.active') draw();
   }));
 }
 
@@ -668,8 +714,17 @@ function addAd(){
   draw();
 }
 function delAd(i){ S.ads.ads.splice(i,1); draw(); }
-function preset(ac,bg,sf){ S.theme.available[0].primaryColor=ac; S.branding.primaryColor=ac;
-  S.theme.available[0].backgroundColor=bg; S.theme.available[0].surfaceColor=sf; draw(); }
+function selectTheme(id){
+  if (!S.theme.available.some(theme => theme.id === id)) return;
+  S.theme.active = id;
+  draw();
+}
+function preset(ac,bg,sf){
+  const theme = S.theme.available.find(theme => theme.id === S.theme.active);
+  if (!theme) return;
+  theme.primaryColor=ac; theme.backgroundColor=bg; theme.surfaceColor=sf;
+  draw();
+}
 
 function fileToData(input, path){
   const f = input.files && input.files[0]; if (!f) return;
