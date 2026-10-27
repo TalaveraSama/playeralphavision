@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/config/app_config.dart';
 import '../../core/config/config_controller.dart';
 import '../../core/theme/nova_theme.dart';
+import '../../core/theme/app_themes.dart';
 import '../net_image.dart';
 
 /// Logotipo textual de la marca (NOVA por defecto).
@@ -206,13 +207,16 @@ class NovaPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final NovaTokens tokens = NovaTokens.of(context);
     final bool enabled = onPressed != null;
+    final bool light = Theme.of(context).extension<NovaAppearance>()?.lightButtons ?? false;
+    final Color fill = light ? Colors.white : tokens.accent;
+    final Color ink = fill.computeLuminance() > 0.45 ? Colors.black : Colors.white;
 
     return NovaFocusable(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(10),
       autofocus: autofocus,
       child: ExcludeFocus(child: Material(
-        color: enabled ? tokens.accent : tokens.accent.withValues(alpha: 0.4),
+        color: enabled ? fill : fill.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           onTap: onPressed,
@@ -226,7 +230,7 @@ class NovaPrimaryButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               if (icon != null) ...<Widget>[
-                Icon(icon, size: compact ? 18 : 20, color: tokens.background),
+                Icon(icon, size: compact ? 18 : 20, color: ink),
                 const SizedBox(width: 9),
               ],
               Text(
@@ -234,7 +238,7 @@ class NovaPrimaryButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: compact ? 14 : 15,
                   fontWeight: FontWeight.w800,
-                  color: tokens.background,
+                  color: ink,
                 ),
               ),
             ],

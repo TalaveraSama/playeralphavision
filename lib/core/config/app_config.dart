@@ -292,6 +292,8 @@ class ThemeSpec {
   /// Portada NOVA de descubrimiento.
   bool get isNova => layout == CatalogLayout.nova;
 
+  bool get isNova2 => isNova && id.toLowerCase() == 'nova2';
+
   /// Nombre del estilo, para el panel y los ajustes.
   String get layoutLabel {
     switch (layout) {

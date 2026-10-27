@@ -725,7 +725,6 @@ async function renderLog(){
 }
 function downloadJson(){
   const c = JSON.parse(JSON.stringify(S));
-  c.theme.available[0].layout = 'nova';
   const blob = new Blob([JSON.stringify(c, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -734,7 +733,6 @@ function downloadJson(){
 }
 
 document.getElementById('btnSave').onclick = async () => {
-  S.theme.available[0].layout = 'nova';
   const r = await api('save', S);
   alert(r.ok ? 'Guardado en el servidor. La app lo cogerá al arrancar.'
              : 'Error: ' + (r.error || 'desconocido'));

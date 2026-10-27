@@ -216,6 +216,20 @@ class ConfigController extends ChangeNotifier {
 
   void _recompute() {
     final Map<String, dynamic> merged = deepMerge(_bundledJson, _remoteJson);
+    // Un panel antiguo puede enviar una lista de temas sin Nova2. Conservar
+    // el preset incluido en el APK sin cambiar el tema activo de la marca.
+    final Map<String, dynamic> theme = asMap(merged['theme']);
+    final List<dynamic> available = List<dynamic>.of(
+        theme['available'] is List ? theme['available'] as List : <dynamic>[]);
+    final Map<String, dynamic> bundledTheme = asMap(_bundledJson['theme']);
+    final dynamic bundledAvailable = bundledTheme['available'];
+    if (!available.any((entry) => entry is Map && entry['id'] == 'nova2') &&
+        bundledAvailable is List) {
+      for (final dynamic entry in bundledAvailable) {
+        if (entry is Map && entry['id'] == 'nova2') available.add(entry);
+      }
+    }
+    merged['theme'] = <String, dynamic>{...theme, 'available': available};
     final AppConfig parsed = AppConfig.fromJson(merged);
     // La URL remota la fija siempre el paquete, nunca la propia respuesta.
     final String bundledUrl = asString(_bundledJson['remoteConfigUrl']) ?? '';

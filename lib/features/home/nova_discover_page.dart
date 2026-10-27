@@ -18,6 +18,7 @@ import '../../widgets/ad_banner.dart';
 import '../../widgets/media_grid.dart';
 import '../../widgets/nova/nova_art.dart';
 import '../../widgets/nova/nova_ui.dart';
+import '../../widgets/nova/nova2_hero.dart';
 import '../../widgets/state_views.dart';
 import '../../widgets/tmdb_poster.dart';
 import '../catalog/catalog_cache.dart';
@@ -390,12 +391,53 @@ class _NovaDiscoverPageState extends State<NovaDiscoverPage> {
     }
 
     final MediaItem? hero = _heroItem;
+    if (context.watch<ConfigController>().theme.isNova2) {
+      return _buildNova2(context, padding, hero);
+    }
   
     if (!wide) {
       return _buildCompact(context, padding, hero);
     }
 
     return _buildWide(context, padding, hero);
+  }
+
+  Widget _buildNova2(BuildContext context, EdgeInsets padding, MediaItem? hero) {
+    final bool tv = NovaMetrics.of(context).isTv;
+    final bool wide = MediaQuery.sizeOf(context).width >= NovaBreakpoints.wide;
+    final bool showLive = context.watch<ConfigController>().config.branding.showLiveSection;
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 40),
+      children: <Widget>[
+        if (!tv && !wide)
+          Padding(
+            padding: padding.copyWith(top: 16, bottom: 12),
+            child: Row(children: <Widget>[
+              const Expanded(child: NovaLogo(fontSize: 22)),
+              if (context.watch<ConfigController>().config.features.search)
+                NovaSquareButton(icon: Icons.search, tooltip: 'Buscar', onPressed: _openSearch),
+            ]),
+          ),
+        if (hero != null)
+          Padding(
+            padding: padding.copyWith(top: 12, bottom: 16),
+            child: Nova2Hero(item: hero, onOpen: () => _open(hero)),
+          ),
+        AdBanner(mediaType: AdMediaType.vod, margin: padding.copyWith(top: 12, bottom: 12)),
+        if (_series.isNotEmpty)
+          _PosterRow(title: 'Series para maratonear', items: _series.take(16).toList(),
+            padding: padding, onOpen: _open, portrait: true),
+        if (_latestMovies.isNotEmpty)
+          _PosterRow(title: 'Una noche de cine', items: _latestMovies.take(16).toList(),
+            padding: padding, onOpen: _open, portrait: true),
+        if (_trending.isNotEmpty)
+          _PosterRow(title: 'Historias que atrapan', items: _trending,
+            padding: padding, onOpen: _open),
+        if (showLive && _live.isNotEmpty)
+          _PosterRow(title: 'En vivo ahora', items: _live.take(12).toList(),
+            padding: padding, onOpen: _open, live: true),
+      ],
+    );
   }
 
   // ------------------------------------------------------------- escritorio
@@ -1226,6 +1268,7 @@ class _PosterRow extends StatelessWidget {
     required this.padding,
     required this.onOpen,
     this.live = false,
+    this.portrait = false,
   });
 
   final String title;
@@ -1233,14 +1276,15 @@ class _PosterRow extends StatelessWidget {
   final EdgeInsets padding;
   final void Function(MediaItem item) onOpen;
   final bool live;
+  final bool portrait;
 
   @override
   Widget build(BuildContext context) {
     final NovaTokens tokens = NovaTokens.of(context);
-    final double width = live ? 210 : 210;
+    final double width = portrait ? (tokens.isTv ? 156 : 138) : 210;
 
     return Padding(
-      padding: padding.copyWith(top: 18),
+      padding: padding.copyWith(top: portrait ? 28 : 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -1250,7 +1294,7 @@ class _PosterRow extends StatelessWidget {
             padding: EdgeInsets.zero,
           ),
           SizedBox(
-            height: live ? 168 : 168,
+            height: portrait ? width * 1.5 + 48 : 168,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: items.length,

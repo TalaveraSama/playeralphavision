@@ -2,6 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
 
+/// Identidad visual consumida por los componentes, sin depender de Provider.
+class NovaAppearance extends ThemeExtension<NovaAppearance> {
+  const NovaAppearance({required this.cinematic, required this.lightButtons});
+  final bool cinematic;
+  final bool lightButtons;
+  @override
+  NovaAppearance copyWith({bool? cinematic, bool? lightButtons}) => NovaAppearance(
+    cinematic: cinematic ?? this.cinematic, lightButtons: lightButtons ?? this.lightButtons);
+  @override
+  NovaAppearance lerp(covariant NovaAppearance? other, double t) =>
+      other == null || t < 0.5 ? this : other;
+}
+
+
 /// Construye el [ThemeData] de la app a partir del tema elegido en la
 /// configuración de marca blanca (`theme1`, `theme2`, ...).
 ThemeData buildThemeData(ThemeSpec spec) {
@@ -24,6 +38,9 @@ ThemeData buildThemeData(ThemeSpec spec) {
 
   return ThemeData(
     useMaterial3: true,
+    extensions: <ThemeExtension<dynamic>>[
+      NovaAppearance(cinematic: spec.isNova2, lightButtons: spec.lightButtons),
+    ],
     colorScheme: scheme,
     scaffoldBackgroundColor: background,
     splashFactory: InkRipple.splashFactory,

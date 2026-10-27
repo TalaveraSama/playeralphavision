@@ -44,6 +44,20 @@
         "heroTint": "#0E1626"
       },
       {
+        "id": "nova2",
+        "name": "Nova2",
+        "layout": "nova",
+        "primaryColor": "#A78BFA",
+        "backgroundColor": "#08070E",
+        "surfaceColor": "#171322",
+        "textColor": "#F8F7FC",
+        "brightness": "dark",
+        "useHero": true,
+        "cardRadius": 8,
+        "lightButtons": true,
+        "heroTint": "#251044"
+      },
+      {
         "id": "ambar",
         "name": "Ámbar",
         "layout": "rows",

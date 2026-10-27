@@ -231,3 +231,25 @@ Probar además en teléfono 360/390 dp y TV 960×540 / 1280×720: recorrer desti
 con flechas, OK y Atrás, comprobar foco visible, desplazamiento del menú,
 orientación, texto aumentado y reproducción. La compatibilidad real de Fire TV
 requiere instalar el APK en el dispositivo; no se deduce solo del diseño.
+
+## Tema Nova2
+
+Nova2 es un tema independiente inspirado en la composición cinematográfica de
+los servicios premium: fondo casi negro, violeta suave, CTA blanco y carátulas
+verticales. No usa nombres, logos ni material gráfico de terceros. NOVA continúa
+siendo el tema activo por defecto.
+
+**Activar:** Perfil → Apariencia → **Nova2** (requiere
+`features.allowThemeSwitch: true`). Para activarlo desde el panel, elige `nova2`
+como `theme.active`. El preset está en `assets/config.json` y
+`admin_panel/config.json`; conserva el layout `nova`.
+
+- Cabecera: `lib/widgets/nova/nova2_hero.dart`.
+- Composición independiente: `_buildNova2` en `nova_discover_page.dart`.
+- Colores, radio y botones: preset `nova2` de la configuración.
+- El nombre de la app sigue siendo el configurado por la marca.
+- Un panel antiguo que no enumere Nova2 no elimina el preset incluido en el APK.
+- Sin cambios en reproducción ni soporte adicional de plataformas.
+
+Validar con `flutter test test/nova2_theme_test.dart`, `flutter analyze` y pruebas
+reales de mando y táctil antes de publicar un APK.
