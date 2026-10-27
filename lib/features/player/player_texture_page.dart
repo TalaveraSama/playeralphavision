@@ -7,6 +7,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../core/models/epg_entry.dart';
 import '../../widgets/nova/nova_ui.dart';
+import '../../widgets/nova/nova3_live_layout.dart';
 import '../../core/models/playable_item.dart';
 import '../../core/config/config_controller.dart';
 import '../../core/state/app_state.dart';
@@ -45,6 +46,9 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   Timer? _watchdog;
   Timer? _hideTimer;
   bool _showBar = true;
+  bool _nova3Fullscreen = false;
+  bool get _nova3Live => _current.isLive &&
+      context.read<ConfigController>().theme.isNova3;
   DateTime? _lastBack;
 
   PlayableItem get _current => widget.playlist.isEmpty
@@ -306,6 +310,14 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   void _onBackPressed() {
+    if (_nova3Live) {
+      if (_nova3Fullscreen) {
+        setState(() => _nova3Fullscreen = false);
+      } else {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
     if (!_showBar) {
       _wakeControls();
       return;
@@ -463,6 +475,10 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       // Teclas CH+ / CH- (muchos mandos de Android TV las envian).
       if (k == LogicalKeyboardKey.channelUp) { _playRelative(1); return true; }
       if (k == LogicalKeyboardKey.channelDown) { _playRelative(-1); return true; }
+      // En el marco Nova3, OK y flechas pertenecen al foco de la lista.
+      if (_nova3Live && (k == LogicalKeyboardKey.select || k == LogicalKeyboardKey.enter ||
+          k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowRight ||
+          k == LogicalKeyboardKey.arrowUp || k == LogicalKeyboardKey.arrowDown)) return false;
       // Direccionales: navegan por los botones (no hacen seek).
       if (_showBar &&
           (k == LogicalKeyboardKey.arrowLeft ||
@@ -508,6 +524,34 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   @override
   Widget build(BuildContext context) {
+    if (_nova3Live) {
+      return PopScope(
+        canPop: !_nova3Fullscreen,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) setState(() => _nova3Fullscreen = false);
+        },
+        child: Scaffold(backgroundColor: Colors.black, body: Nova3LiveLayout(
+          playlist: widget.playlist,
+          index: _index,
+          fullscreen: _nova3Fullscreen,
+          onBack: () => Navigator.of(context).pop(),
+          onFullscreen: () => setState(() => _nova3Fullscreen = !_nova3Fullscreen),
+          onSelect: (index) { if (index != _index) _playRelative(index - _index); },
+          video: ColoredBox(color: Colors.black, child: _unavailable
+              ? const Center(child: Text('Canal no disponible', style: TextStyle(color: Colors.white)))
+              : _textureId == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : Texture(textureId: _textureId!)),
+          controls: Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+            _pbtn(Icons.skip_previous, () => _playRelative(-1)),
+            _pbtn(_paused ? Icons.play_arrow : Icons.pause, _togglePlay),
+            _pbtn(Icons.skip_next, () => _playRelative(1)),
+            _pbtn(Icons.event_note_outlined, _showEpg),
+            _pbtn(Icons.subtitles, _openTracks),
+          ]),
+        )),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(

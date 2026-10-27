@@ -14,13 +14,10 @@ import 'core/utils/device_profile.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Telefono/tableta: horizontal y vertical automatico (gira con el sensor).
-  // La TV no tiene sensor de rotacion, asi que se queda en horizontal.
+  // La app se usa siempre en horizontal (teléfono, tableta y TV).
   await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
   ]);
 
   // Pantalla completa real: oculta la barra de notificaciones (estado) y la

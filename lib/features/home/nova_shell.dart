@@ -176,10 +176,10 @@ class _NovaShellState extends State<NovaShell> {
           ? Scaffold(
               body: SafeArea(
                 child: Row(children: <Widget>[
-                  if (wide) _buildRail(tabs, index),
+                  _buildRail(tabs, index),
                   Expanded(child: Column(children: <Widget>[
                     Nova3TopBar(
-                      showLogo: !wide,
+                      showLogo: false,
                       onSearch: canSearch ? _openSearch : null,
                       onProfile: _openProfile,
                       onFavorites: config.features.favorites
@@ -191,7 +191,6 @@ class _NovaShellState extends State<NovaShell> {
                   ])),
                 ]),
               ),
-              bottomNavigationBar: wide ? null : _buildNova3MobileTabs(tabs, index),
             )
           : wide && !isTv
           ? Scaffold(
@@ -222,32 +221,6 @@ class _NovaShellState extends State<NovaShell> {
                   bottomNavigationBar: _buildBottomBar(tabs, index),
                 ),
     );
-  }
-
-  Widget _buildNova3MobileTabs(List<_NovaTab> tabs, int index) {
-    final tokens = NovaTokens.of(context);
-    return SafeArea(top: false, child: Container(
-      height: 64,
-      color: tokens.surface,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        itemCount: tabs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 4),
-        itemBuilder: (context, i) => Semantics(selected: i == index,
-          child: NovaFocusable(onTap: () => _select(i), child: Container(
-            constraints: const BoxConstraints(minWidth: 80),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-              Icon(i == index ? tabs[i].selectedIcon : tabs[i].icon,
-                size: 20, color: i == index ? tokens.accent : tokens.muted),
-              Text(tabs[i].label, style: TextStyle(fontSize: 11,
-                color: i == index ? tokens.text : tokens.muted)),
-            ]),
-          )),
-        ),
-      ),
-    ));
   }
 
   Widget _buildBottomBar(List<_NovaTab> tabs, int index) {
@@ -283,7 +256,7 @@ class _NovaShellState extends State<NovaShell> {
     final NovaTokens tokens = NovaTokens.of(context);
     final bool nova3 = context.watch<ConfigController>().theme.isNova3;
     return Container(
-      width: nova3 ? 196 : 184,
+      width: nova3 ? (MediaQuery.sizeOf(context).height < 500 ? 148 : 196) : 184,
       decoration: BoxDecoration(
         color: tokens.surface,
         border: Border(right: BorderSide(color: nova3 ? Colors.transparent : tokens.hairline)),
@@ -308,8 +281,8 @@ class _NovaShellState extends State<NovaShell> {
                     autofocus: i == 0,
                     onTap: () => _select(i),
                     child: Container(
-                      constraints: const BoxConstraints(minHeight: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      constraints: BoxConstraints(minHeight: nova3 && MediaQuery.sizeOf(context).height < 500 ? 44 : 50),
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: nova3 ? 7 : 12),
                       decoration: BoxDecoration(
                         color: i == index
                             ? tokens.accent.withValues(alpha: nova3 ? 0.05 : 0.14)
@@ -364,7 +337,8 @@ class _NovaShellState extends State<NovaShell> {
       builder: (_) => const CatalogPage(kind: MediaKind.series, embedded: true,
         categoryHints: <String>['anime', 'animacion japonesa'])),
     _NovaTab(label: 'Explorar', icon: Icons.explore_outlined,
-      selectedIcon: Icons.explore, builder: (_) => const NovaBrowsePage()),
+      selectedIcon: Icons.explore, builder: (_) => const CatalogPage(
+        kind: MediaKind.movie, embedded: true, nova3Explore: true)),
   ];
 
   /// Barra superior: Inicio, Series, Películas, En vivo, Deportes, Infantil.

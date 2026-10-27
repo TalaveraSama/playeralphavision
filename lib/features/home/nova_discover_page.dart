@@ -402,7 +402,14 @@ class _NovaDiscoverPageState extends State<NovaDiscoverPage> {
         items.add(item);
         if (items.length >= 30) break;
       }
-      return Nova3Dashboard(items: items, onOpen: _open);
+      return Nova3Dashboard(items: items, onOpen: _open, collections: <Nova3Collection>[
+        if (_latestMovies.isNotEmpty)
+          Nova3Collection(title: 'Películas recientes', items: _latestMovies.take(24).toList()),
+        if (_series.isNotEmpty)
+          Nova3Collection(title: 'Series para descubrir', items: _series.take(24).toList()),
+        if (_trending.isNotEmpty)
+          Nova3Collection(title: 'Mejor valorados', items: _trending),
+      ]);
     }
     if (context.watch<ConfigController>().theme.isNova2) {
       return _buildNova2(context, padding, hero);

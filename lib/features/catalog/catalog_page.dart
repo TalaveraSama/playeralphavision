@@ -13,6 +13,7 @@ import '../../core/state/app_state.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/media_grid.dart';
 import '../../widgets/state_views.dart';
+import '../../widgets/nova/nova3_dashboard.dart';
 import '../details/series_details_page.dart';
 import '../details/vod_details_page.dart';
 import '../player/open_player.dart';
@@ -31,9 +32,11 @@ class CatalogPage extends StatefulWidget {
     required this.kind,
     this.embedded = false,
     this.categoryHints = const <String>[],
+    this.nova3Explore = false,
   });
 
   final MediaKind kind;
+  final bool nova3Explore;
 
   /// Sin barra de aplicación propia: la portada NOVA ya pinta la navegación
   /// superior y la página solo aporta cabecera, filtros y rejilla.
@@ -268,6 +271,23 @@ class _CatalogPageState extends State<CatalogPage>
         app.favorites.map((MediaItem item) => item.favoriteKey).toSet();
     final bool canSearch = configController.config.features.search;
 
+    if (configController.theme.isNova3 && widget.kind != MediaKind.live) {
+      if (_loading) return const LoadingView(message: 'Cargando catálogo…');
+      if (_error != null) return ErrorView(message: _error!, onRetry: () => _loadAll());
+      final List<Nova3Collection> collections = <Nova3Collection>[];
+      for (final category in _categories) {
+        final entries = _items.where((item) => item.categoryId == category.id).take(36).toList();
+        if (entries.isNotEmpty) collections.add(Nova3Collection(title: category.name, items: entries));
+        if (collections.length >= 15) break;
+      }
+      return Nova3Dashboard(
+        key: ValueKey<String>('nova3-${widget.kind.name}-${widget.categoryHints.join()}'),
+        items: _items,
+        explore: widget.nova3Explore,
+        collections: collections,
+        onOpen: (item) => _openItem(item, _items.indexOf(item)),
+      );
+    }
     if (configController.theme.isRows) {
       return Scaffold(
         body: _buildRowsBody(configController, app, favoriteKeys, canSearch),

@@ -260,8 +260,9 @@ Tema independiente basado en la referencia visual aportada: negro casi puro,
 menú lateral de texto e iconos, acciones discretas y hora local arriba, dos
 imágenes destacadas y una rejilla de cuatro columnas (tres en anchos intermedios).
 No incluye logos ni imágenes de Xuper TV: utiliza la marca y el catálogo reales.
-En teléfono, los destacados se apilan, la rejilla tiene dos columnas y las
-secciones se desplazan horizontalmente abajo.
+Nova3 conserva el menú lateral en teléfonos, tabletas y TV; la aplicación
+se configura siempre en horizontal. En espacios excepcionalmente estrechos el
+mosaico reduce columnas para evitar desbordamientos.
 
 **Activar:** Perfil → Apariencia → **Nova3**. También se puede fijar
 `theme.active` a `nova3` en el panel. NOVA sigue activo por defecto; Nova2 se
@@ -294,3 +295,36 @@ Probar además el shell completo en TV 960×540 / 1280×720 y teléfono 360 dp:
 seleccionar Nova3, recorrer mosaicos y menú con flechas, OK y Atrás, abrir búsqueda,
 favoritos y perfil, cambiar de tema y comprobar foco, recarga de catálogo y vídeo.
 Las proporciones imitan la referencia; las imágenes finales dependen del proveedor.
+
+
+### Nova3 horizontal — ajuste a las referencias completas
+
+- Flutter permite solo `landscapeLeft` / `landscapeRight`.
+- Android declara `sensorLandscape`; iPhone/iPad declaran solo orientaciones
+  horizontales y modo de pantalla completa. Esto afecta a todos los temas,
+  incluido el acceso y los reproductores: ya no se solicita modo vertical.
+- Nova3 tiene menú lateral siempre, con menor ancho en teléfonos de poca altura;
+  el menú se desplaza si no cabe completo. Ya no hay barra inferior Nova3.
+- Películas, Series, Kids y Anime reutilizan el dashboard con dos destacados,
+  cuatro miniaturas y filas de carátulas por categorías del proveedor. Hasta
+  15 filas, con 36 elementos por fila para limitar la memoria.
+- Explorar usa una imagen principal y hasta tres imágenes laterales, seguida
+  de filas de películas por categoría. No se inventan colecciones editoriales
+  como premios o plataformas que el proveedor no haya suministrado.
+- Al abrir un canal en **Media3/ExoPlayer**, Nova3 muestra el vídeo junto a la
+  lista de canales, con cambio por toque/OK, controles y pantalla completa.
+  Atrás en pantalla completa vuelve a la lista. No se crea un segundo motor.
+  La lista de canales se mantiene visible, pero el menú principal del shell
+  se recupera volviendo a TV: no está superpuesto al vídeo en esta revisión.
+- IJK, VLC y MPV mantienen sus pantallas anteriores; no se cambia la elección
+  del motor ni las reglas de recuperación del stream.
+
+Validación añadida: `flutter test test/landscape_layout_test.dart` comprueba
+las declaraciones de orientación y el marco de TV a 640×360 y 1280×720.
+Ejecutar también `flutter analyze`, las demás pruebas y reproducir canales
+reales tras compilar. No se ha podido ejecutar Flutter en el entorno de edición.
+
+Limitaciones de plataforma: algunos sistemas modernos pueden ignorar el bloqueo
+de orientación en ventanas o pantallas grandes; comprobar Android 16/iPadOS en
+hardware real. La app no puede girar físicamente un monitor. Roku sigue sin cliente
+propio en este repositorio: estos cambios no lo convierten en una app Roku.
