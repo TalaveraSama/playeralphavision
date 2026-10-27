@@ -114,6 +114,6 @@ class _RootGateState extends State<_RootGate> {
     // (barra superior en pantallas anchas y barra inferior en el móvil); el
     // resto de temas siguen con las pestañas de siempre.
     if (!app.isLoggedIn) return const LoginPage();
-    return config.theme.isNova ? const NovaShell() : const HomeShell();
+    return config.theme.isNova ? NovaShell(key: ValueKey<String>(config.theme.id)) : const HomeShell();
   }
 }

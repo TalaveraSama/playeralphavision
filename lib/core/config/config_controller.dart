@@ -216,17 +216,18 @@ class ConfigController extends ChangeNotifier {
 
   void _recompute() {
     final Map<String, dynamic> merged = deepMerge(_bundledJson, _remoteJson);
-    // Un panel antiguo puede enviar una lista de temas sin Nova2. Conservar
-    // el preset incluido en el APK sin cambiar el tema activo de la marca.
+    // Mantener los presets locales aunque un panel antiguo no los enumere.
     final Map<String, dynamic> theme = asMap(merged['theme']);
     final List<dynamic> available = List<dynamic>.of(
         theme['available'] is List ? theme['available'] as List : <dynamic>[]);
-    final Map<String, dynamic> bundledTheme = asMap(_bundledJson['theme']);
-    final dynamic bundledAvailable = bundledTheme['available'];
-    if (!available.any((entry) => entry is Map && entry['id'] == 'nova2') &&
-        bundledAvailable is List) {
+    final dynamic bundledAvailable = asMap(_bundledJson['theme'])['available'];
+    if (bundledAvailable is List) {
       for (final dynamic entry in bundledAvailable) {
-        if (entry is Map && entry['id'] == 'nova2') available.add(entry);
+        if (entry is Map &&
+            const <String>['nova2', 'nova3'].contains(entry['id']) &&
+            !available.any((existing) => existing is Map && existing['id'] == entry['id'])) {
+          available.add(entry);
+        }
       }
     }
     merged['theme'] = <String, dynamic>{...theme, 'available': available};

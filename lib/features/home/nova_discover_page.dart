@@ -19,6 +19,7 @@ import '../../widgets/media_grid.dart';
 import '../../widgets/nova/nova_art.dart';
 import '../../widgets/nova/nova_ui.dart';
 import '../../widgets/nova/nova2_hero.dart';
+import '../../widgets/nova/nova3_dashboard.dart';
 import '../../widgets/state_views.dart';
 import '../../widgets/tmdb_poster.dart';
 import '../catalog/catalog_cache.dart';
@@ -391,6 +392,18 @@ class _NovaDiscoverPageState extends State<NovaDiscoverPage> {
     }
 
     final MediaItem? hero = _heroItem;
+    if (context.watch<ConfigController>().theme.isNova3) {
+      final bool showLive = context.watch<ConfigController>().config.branding.showLiveSection;
+      final List<MediaItem> items = <MediaItem>[];
+      final Set<String> seen = <String>{};
+      for (final item in <MediaItem>[..._bannerPool, ..._heroPool, ..._latestMovies, ..._series,
+          if (showLive) ..._live]) {
+        if ((!showLive && item.kind == MediaKind.live) || !seen.add(item.favoriteKey)) continue;
+        items.add(item);
+        if (items.length >= 30) break;
+      }
+      return Nova3Dashboard(items: items, onOpen: _open);
+    }
     if (context.watch<ConfigController>().theme.isNova2) {
       return _buildNova2(context, padding, hero);
     }

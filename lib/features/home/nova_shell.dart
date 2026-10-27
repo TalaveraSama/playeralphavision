@@ -8,6 +8,7 @@ import '../../core/models/media_item.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/nova_theme.dart';
 import '../../widgets/nova/nova_ui.dart';
+import '../../widgets/nova/nova3_top_bar.dart';
 import '../catalog/catalog_page.dart';
 import '../guide/guide_page.dart';
 import '../catalog/nova_browse_page.dart';
@@ -81,7 +82,9 @@ class _NovaShellState extends State<NovaShell> {
     final AppConfig config = context.read<ConfigController>().config;
     final bool wide = NovaMetrics.of(context).isTv ||
         MediaQuery.sizeOf(context).width >= NovaBreakpoints.wide;
-    final List<_NovaTab> tabs = wide
+    final List<_NovaTab> tabs = context.read<ConfigController>().theme.isNova3
+        ? _nova3Tabs(config.branding.showLiveSection)
+        : wide
         ? _wideTabs(config.branding.showLiveSection)
         : _narrowTabs(
             config.branding.showLiveSection, config.features.favorites);
@@ -123,7 +126,10 @@ class _NovaShellState extends State<NovaShell> {
     // "izquierda" sin tener que bajar toda la lista para dar con la barra.
     final bool isTv = NovaMetrics.of(context).isTv;
 
-    final List<_NovaTab> tabs = wide
+    final bool nova3 = context.watch<ConfigController>().theme.isNova3;
+    final List<_NovaTab> tabs = nova3
+        ? _nova3Tabs(showLive)
+        : wide
         ? _wideTabs(showLive)
         : _narrowTabs(showLive, config.features.favorites);
 
@@ -166,7 +172,28 @@ class _NovaShellState extends State<NovaShell> {
           ),
         );
       },
-      child: wide && !isTv
+      child: nova3
+          ? Scaffold(
+              body: SafeArea(
+                child: Row(children: <Widget>[
+                  if (wide) _buildRail(tabs, index),
+                  Expanded(child: Column(children: <Widget>[
+                    Nova3TopBar(
+                      showLogo: !wide,
+                      onSearch: canSearch ? _openSearch : null,
+                      onProfile: _openProfile,
+                      onFavorites: config.features.favorites
+                          ? () => Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => const FavoritesPage()))
+                          : null,
+                    ),
+                    Expanded(child: body),
+                  ])),
+                ]),
+              ),
+              bottomNavigationBar: wide ? null : _buildNova3MobileTabs(tabs, index),
+            )
+          : wide && !isTv
           ? Scaffold(
               body: Column(
                 children: <Widget>[
@@ -195,6 +222,32 @@ class _NovaShellState extends State<NovaShell> {
                   bottomNavigationBar: _buildBottomBar(tabs, index),
                 ),
     );
+  }
+
+  Widget _buildNova3MobileTabs(List<_NovaTab> tabs, int index) {
+    final tokens = NovaTokens.of(context);
+    return SafeArea(top: false, child: Container(
+      height: 64,
+      color: tokens.surface,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        itemCount: tabs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 4),
+        itemBuilder: (context, i) => Semantics(selected: i == index,
+          child: NovaFocusable(onTap: () => _select(i), child: Container(
+            constraints: const BoxConstraints(minWidth: 80),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+              Icon(i == index ? tabs[i].selectedIcon : tabs[i].icon,
+                size: 20, color: i == index ? tokens.accent : tokens.muted),
+              Text(tabs[i].label, style: TextStyle(fontSize: 11,
+                color: i == index ? tokens.text : tokens.muted)),
+            ]),
+          )),
+        ),
+      ),
+    ));
   }
 
   Widget _buildBottomBar(List<_NovaTab> tabs, int index) {
@@ -228,23 +281,24 @@ class _NovaShellState extends State<NovaShell> {
   /// Destinos grandes, desplazables y con foco explícito para el mando.
   Widget _buildRail(List<_NovaTab> tabs, int index) {
     final NovaTokens tokens = NovaTokens.of(context);
+    final bool nova3 = context.watch<ConfigController>().theme.isNova3;
     return Container(
-      width: 184,
+      width: nova3 ? 196 : 184,
       decoration: BoxDecoration(
         color: tokens.surface,
-        border: Border(right: BorderSide(color: tokens.hairline)),
+        border: Border(right: BorderSide(color: nova3 ? Colors.transparent : tokens.hairline)),
       ),
       child: SafeArea(
         child: FocusTraversalGroup(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(12, 24, 12, 20),
             children: <Widget>[
-              const Padding(
-                padding: EdgeInsets.fromLTRB(10, 0, 10, 24),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 24),
                 child: FittedBox(
                   alignment: Alignment.centerLeft,
                   fit: BoxFit.scaleDown,
-                  child: NovaLogo(fontSize: 20),
+                  child: NovaLogo(fontSize: 20, color: nova3 ? Colors.white : null),
                 ),
               ),
               for (int i = 0; i < tabs.length; i++)
@@ -258,7 +312,7 @@ class _NovaShellState extends State<NovaShell> {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(
                         color: i == index
-                            ? tokens.accent.withValues(alpha: 0.14)
+                            ? tokens.accent.withValues(alpha: nova3 ? 0.05 : 0.14)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -273,17 +327,45 @@ class _NovaShellState extends State<NovaShell> {
                     ),
                   ),
                 ),
+              if (!nova3) ...<Widget>[
               const SizedBox(height: 16),
               if (context.read<ConfigController>().config.features.search)
                 NovaSquareButton(icon: Icons.search, tooltip: 'Buscar', onPressed: _openSearch),
               const SizedBox(height: 10),
               NovaSquareButton(icon: Icons.person_outline, tooltip: 'Perfil y ajustes', onPressed: _openProfile),
+              ],
             ],
           ),
         ),
       ),
     );
   }
+
+  /// Secciones de Nova3; los filtros usan categorías reales, no contenido fijo.
+  List<_NovaTab> _nova3Tabs(bool showLive) => <_NovaTab>[
+    _NovaTab(label: 'Destacados', icon: Icons.thumb_up_outlined,
+      selectedIcon: Icons.thumb_up, builder: (_) => const NovaDiscoverPage()),
+    if (showLive)
+      _NovaTab(label: 'TV', icon: Icons.live_tv_outlined,
+        selectedIcon: Icons.live_tv,
+        builder: (_) => const CatalogPage(kind: MediaKind.live, embedded: true)),
+    _NovaTab(label: 'Películas', icon: Icons.movie_outlined,
+      selectedIcon: Icons.movie,
+      builder: (_) => const CatalogPage(kind: MediaKind.movie, embedded: true)),
+    _NovaTab(label: 'Series', icon: Icons.local_movies_outlined,
+      selectedIcon: Icons.local_movies,
+      builder: (_) => const CatalogPage(kind: MediaKind.series, embedded: true)),
+    _NovaTab(label: 'Kids', icon: Icons.child_care_outlined,
+      selectedIcon: Icons.child_care,
+      builder: (_) => const CatalogPage(kind: MediaKind.movie, embedded: true,
+        categoryHints: <String>['infantil', 'infantiles', 'kids', 'familia', 'family', 'ninos'])),
+    _NovaTab(label: 'Anime', icon: Icons.auto_awesome_outlined,
+      selectedIcon: Icons.auto_awesome,
+      builder: (_) => const CatalogPage(kind: MediaKind.series, embedded: true,
+        categoryHints: <String>['anime', 'animacion japonesa'])),
+    _NovaTab(label: 'Explorar', icon: Icons.explore_outlined,
+      selectedIcon: Icons.explore, builder: (_) => const NovaBrowsePage()),
+  ];
 
   /// Barra superior: Inicio, Series, Películas, En vivo, Deportes, Infantil.
   List<_NovaTab> _wideTabs(bool showLive) {

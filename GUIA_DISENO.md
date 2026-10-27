@@ -253,3 +253,44 @@ como `theme.active`. El preset está en `assets/config.json` y
 
 Validar con `flutter test test/nova2_theme_test.dart`, `flutter analyze` y pruebas
 reales de mando y táctil antes de publicar un APK.
+
+## Tema Nova3 — dashboard de mosaicos
+
+Tema independiente basado en la referencia visual aportada: negro casi puro,
+menú lateral de texto e iconos, acciones discretas y hora local arriba, dos
+imágenes destacadas y una rejilla de cuatro columnas (tres en anchos intermedios).
+No incluye logos ni imágenes de Xuper TV: utiliza la marca y el catálogo reales.
+En teléfono, los destacados se apilan, la rejilla tiene dos columnas y las
+secciones se desplazan horizontalmente abajo.
+
+**Activar:** Perfil → Apariencia → **Nova3**. También se puede fijar
+`theme.active` a `nova3` en el panel. NOVA sigue activo por defecto; Nova2 se
+conserva. Compilar un APK nuevo es necesario para incluir estos widgets.
+
+Archivos principales:
+- `lib/widgets/nova/nova3_dashboard.dart`: mosaico y tarjetas.
+- `lib/widgets/nova/nova3_top_bar.dart`: acciones y reloj (sin indicadores falsos).
+- `lib/features/home/nova_shell.dart`: secciones y navegación adaptativa.
+- `assets/config.json`: preset `nova3` (negro, acento azul violeta, radio 3 dp).
+
+Destacados usa los elementos configurados por el proveedor y completa con el
+catálogo, sin duplicados y hasta 30 elementos; la rejilla se construye de forma
+perezosa. TV respeta `showLiveSection`. Kids y Anime usan las pistas de categorías
+existentes del catálogo (películas infantiles y series anime, respectivamente),
+con el comportamiento habitual de CatalogPage si el proveedor no tiene coincidencia.
+No se cambia ningún motor de vídeo ni se añade un cliente Roku.
+
+Validación con SDK instalado:
+
+```sh
+flutter pub get
+flutter analyze
+flutter test test/nova3_theme_test.dart
+flutter test
+flutter build apk --release
+```
+
+Probar además el shell completo en TV 960×540 / 1280×720 y teléfono 360 dp:
+seleccionar Nova3, recorrer mosaicos y menú con flechas, OK y Atrás, abrir búsqueda,
+favoritos y perfil, cambiar de tema y comprobar foco, recarga de catálogo y vídeo.
+Las proporciones imitan la referencia; las imágenes finales dependen del proveedor.

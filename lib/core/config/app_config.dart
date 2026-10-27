@@ -294,6 +294,8 @@ class ThemeSpec {
 
   bool get isNova2 => isNova && id.toLowerCase() == 'nova2';
 
+  bool get isNova3 => isNova && id.toLowerCase() == 'nova3';
+
   /// Nombre del estilo, para el panel y los ajustes.
   String get layoutLabel {
     switch (layout) {

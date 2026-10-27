@@ -58,6 +58,20 @@
         "heroTint": "#251044"
       },
       {
+        "id": "nova3",
+        "name": "Nova3",
+        "layout": "nova",
+        "primaryColor": "#6260FF",
+        "backgroundColor": "#070707",
+        "surfaceColor": "#0D0D0F",
+        "textColor": "#F5F5F7",
+        "brightness": "dark",
+        "useHero": true,
+        "cardRadius": 3,
+        "lightButtons": false,
+        "heroTint": "#090909"
+      },
+      {
         "id": "ambar",
         "name": "Ámbar",
         "layout": "rows",

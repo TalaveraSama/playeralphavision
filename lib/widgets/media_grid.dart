@@ -290,7 +290,15 @@ class _NeonFocusState extends State<NeonFocus> {
     final Color primary = Theme.of(context).colorScheme.primary;
     return Focus(
       canRequestFocus: widget.onTap != null,
-      onFocusChange: (bool v) => setState(() => _focused = v),
+      onFocusChange: (bool v) {
+        setState(() => _focused = v);
+        if (v) {
+          Scrollable.ensureVisible(context,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero : const Duration(milliseconds: 180));
+        }
+      },
       onKeyEvent: _onKey,
       child: Container(
         decoration: BoxDecoration(
