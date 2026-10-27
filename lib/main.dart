@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
@@ -33,7 +34,8 @@ Future<void> main() async {
   ));
 
   // libmpv (media_kit) se inicializa una sola vez antes de crear reproductores.
-  MediaKit.ensureInitialized();
+  // iOS uses MobileVLCKit; no libmpv iOS binary is bundled.
+  if (!Platform.isIOS) MediaKit.ensureInitialized();
 
   // Equipos con poca memoria (Fire TV Stick, cajas baratas): se limita la caché
   // de imágenes decodificadas para que el sistema no cierre la app.

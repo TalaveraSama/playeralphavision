@@ -61,6 +61,7 @@ Future<void> openPlayer(
         }
         if (engine == 'vlc') {
           return PlayerVlcPage(
+            categoryName: categoryName,
             playlist: playlist,
             initialIndex: initialIndex,
             headers: app.headers,
@@ -86,7 +87,7 @@ Future<void> openPlayer(
   );
 
   // 2) Si libVLC no arranco (timeout), se reintenta con ExoPlayer.
-  if (result == 'exo') {
+  if (result == 'exo' && !Platform.isIOS) {
     if (!context.mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(

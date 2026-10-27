@@ -139,3 +139,12 @@ un APK anterior sí necesita la integración nueva del reproductor.
 Validación: pruebas JavaScript de creación, cancelación, no duplicación,
 conservación de anuncios, eliminación de demos y campos condicionales. Sintaxis
 PHP comprobada con parser; no se ejecutó servidor PHP ni prueba en dispositivo.
+
+
+### iPhone (preparación 1.2.43+)
+
+La misma franja Overlay se conecta a VLC en iOS desde 1.2.43. Se mantiene
+`ads.inPlayer`; el panel nuevo lo rotula Media3 / iPhone. En iOS, el recordatorio
+vencido vuelve a Inicio, no cierra la app. Antes de distribuir, compila y valida
+esta integración en un iPhone real: el código se preparó sin SDK Apple disponible.
+Consulta `GUIA_IPHONE.md` para firma, CocoaPods y TestFlight.

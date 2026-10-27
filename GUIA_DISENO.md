@@ -414,3 +414,14 @@ pendientes de validar con el SDK instalado.
 - Añadidas pruebas `usage_reminder_test.dart` y `player_notice_rotation_test.dart`.
   Comprobadas sintaxis y estructuras JSON; analyzer, tests Flutter y APK pendientes
   en un equipo con SDK. No hay APK compilado en este release.
+
+
+### 1.2.43 — preparación de iPhone / iPad
+
+- iOS selecciona VLC y no inicializa libmpv ni abre los canales Media3 de Android.
+- CocoaPods, texto de red local, controles con SafeArea y script de marca en macOS.
+- Misma orientación horizontal y configuración remota; Overlay integrado con VLC iOS.
+- iOS no se bloquea por actualizaciones APK del panel; firma/actualizaciones vía Apple.
+- Android conserva motores y selección. Guía completa: `GUIA_IPHONE.md`.
+- Sintaxis Dart, plist y shell verificadas; compilación CocoaPods/Xcode, tests Flutter,
+  firma y reproducción en iPhone real pendientes (sin SDK Apple/Flutter aquí).

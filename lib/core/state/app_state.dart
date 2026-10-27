@@ -11,6 +11,7 @@ import '../models/stream_format.dart';
 import '../models/xtream_account.dart';
 import '../models/xtream_credentials.dart';
 import '../storage/prefs_store.dart';
+import '../utils/player_platform.dart';
 
 /// Estado global: sesión, cuenta, ajustes, favoritos e historial.
 class AppState extends ChangeNotifier {
@@ -361,7 +362,7 @@ class AppState extends ChangeNotifier {
   }
 
   /// Motor del reproductor: 'exo', 'ijk' o 'mpv'.
-  String get playerEngine => _store.playerEngine;
+  String get playerEngine => playerEngineForPlatform(_store.playerEngine, defaultTargetPlatform);
 
   Future<void> setPlayerEngine(String engine) async {
     await _store.savePlayerEngine(engine);

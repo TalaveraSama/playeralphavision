@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_info.dart';
@@ -64,6 +65,10 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _checkUpdates(AppState app, ConfigController config) async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      _toast('En iPhone actualiza desde TestFlight o App Store, según la distribución de tu marca.');
+      return;
+    }
     if (!config.config.hasRemoteConfig) {
       _toast('La marca no tiene servidor de configuración remota.');
       return;
@@ -126,7 +131,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Selector explicito: antes era un ciclo y se "perdia" ExoPlayer.
   Future<void> _pickEngine(AppState app) async {
-    const List<MapEntry<String, String>> engines = <MapEntry<String, String>>[
+    final List<MapEntry<String, String>> engines = defaultTargetPlatform == TargetPlatform.iOS
+        ? const <MapEntry<String, String>>[MapEntry('vlc', 'VLC · iPhone / iPad')]
+        : const <MapEntry<String, String>>[
       MapEntry<String, String>('exo', 'ExoPlayer (Media3) - recomendado'),
       MapEntry<String, String>('ijk', 'ijkplayer (nativo)'),
       MapEntry<String, String>('mpv', 'libmpv (media_kit)'),
@@ -326,7 +333,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             onTap: () => _pickEngine(app),
           ),
-          SwitchListTile(
+          if (defaultTargetPlatform != TargetPlatform.iOS) SwitchListTile(
             secondary: const Icon(Icons.settings_input_component),
             title: const Text('Decodificaci\u00f3n por hardware'),
             subtitle: const Text(
@@ -472,7 +479,9 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.system_update_alt),
             title: const Text('Buscar actualizaciones'),
             subtitle: Text(
-              config.config.update.enabled
+              defaultTargetPlatform == TargetPlatform.iOS
+                  ? 'iPhone: TestFlight / App Store; no instala APK.'
+                  : config.config.update.enabled
                   ? 'Última publicada: ${config.config.update.latestVersion}'
                   : 'Las actualizaciones están desactivadas por la marca.',
             ),

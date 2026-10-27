@@ -80,7 +80,7 @@ class DeviceProfile {
       kind: widthDp >= 600 ? DeviceKind.tablet : DeviceKind.phone,
       isFireTv: false,
       abis: const <String>[],
-      model: 'Android',
+      model: Platform.isIOS ? 'iPhone / iPad' : 'Android',
     );
 
     if (Platform.isAndroid) {

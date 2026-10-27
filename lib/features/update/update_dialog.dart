@@ -23,6 +23,8 @@ Future<void> maybeShowUpdateDialog(
   ConfigController config,
   AppState app,
 ) async {
+  // El panel distribuye APK; nunca bloquear iOS con una actualización Android.
+  if (Platform.isIOS) return;
   final UpdateConfig update = config.config.update;
   if (!update.hasUpdate) return;
 

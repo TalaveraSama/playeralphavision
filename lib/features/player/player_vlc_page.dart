@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../core/config/ads_config.dart';
+import '../../core/models/media_item.dart';
+import '../../widgets/player_notice.dart';
 
 import '../../core/models/epg_entry.dart';
 import '../../core/models/playable_item.dart';
@@ -19,17 +24,19 @@ class PlayerVlcPage extends StatefulWidget {
     required this.playlist,
     this.initialIndex = 0,
     this.headers,
+    this.categoryName,
   });
 
   final List<PlayableItem> playlist;
   final int initialIndex;
   final Map<String, String>? headers;
+  final String? categoryName;
 
   @override
   State<PlayerVlcPage> createState() => _PlayerVlcPageState();
 }
 
-class _PlayerVlcPageState extends State<PlayerVlcPage> {
+class _PlayerVlcPageState extends State<PlayerVlcPage> with WidgetsBindingObserver {
   late final int _start = widget.initialIndex
       .clamp(0, widget.playlist.isEmpty ? 0 : widget.playlist.length - 1);
   late int _index = _start;
@@ -39,6 +46,7 @@ class _PlayerVlcPageState extends State<PlayerVlcPage> {
   String? _error;
   Timer? _hideTimer;
   Timer? _initTimer;
+  final FocusNode _playerFocus = FocusNode();
 
   PlayableItem get _current => widget.playlist[_index];
   bool get _isLive => _current.isLive;
@@ -46,13 +54,19 @@ class _PlayerVlcPageState extends State<PlayerVlcPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (Platform.isIOS) unawaited(WakelockPlus.enable());
     _controller = _buildController(widget.playlist[_start].url);
     _controller.addListener(_onValue);
     _restartHide();
     // Si libVLC no arranca en 15 s, se reabre el canal con ExoPlayer.
     _initTimer = Timer(const Duration(seconds: 15), () {
       if (!mounted || _ready) return;
-      Navigator.of(context).pop('exo');
+      if (Platform.isIOS) {
+        setState(() => _error = 'No se pudo iniciar el vídeo. Vuelve al catálogo y prueba otro canal o el formato HLS.');
+      } else {
+        Navigator.of(context).pop('exo');
+      }
     });
   }
 
@@ -64,7 +78,7 @@ class _PlayerVlcPageState extends State<PlayerVlcPage> {
     return VlcPlayerController.network(
       url,
       // Todo por software: el hardware da problemas en Fire TV / TV box.
-      hwAcc: HwAcc.disabled,
+      hwAcc: Platform.isIOS ? HwAcc.auto : HwAcc.disabled,
       autoPlay: true,
       options: VlcPlayerOptions(
         advanced: VlcAdvancedOptions(<String>[
@@ -83,7 +97,7 @@ class _PlayerVlcPageState extends State<PlayerVlcPage> {
           '--no-skip-frames',
           '--clock-jitter=0',
           '--clock-synchro=0',
-          '--avcodec-hw=none',
+          if (!Platform.isIOS) '--avcodec-hw=none',
         ],
       ),
     );
@@ -334,7 +348,17 @@ class _PlayerVlcPageState extends State<PlayerVlcPage> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (Platform.isIOS && state != AppLifecycleState.resumed && _ready) {
+      unawaited(_controller.pause());
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (Platform.isIOS) unawaited(WakelockPlus.disable());
+    _playerFocus.dispose();
     _hideTimer?.cancel();
     _initTimer?.cancel();
     _controller.removeListener(_onValue);
@@ -450,10 +474,20 @@ class _PlayerVlcPageState extends State<PlayerVlcPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!Platform.isIOS) return _buildPlayer(context);
+    return PlayerNotice(
+      title: _current.title, categoryName: widget.categoryName,
+      mediaType: _current.isLive ? AdMediaType.live :
+          _current.source?.kind == MediaKind.series ? AdMediaType.series : AdMediaType.vod,
+      child: _buildPlayer(context),
+    );
+  }
+
+  Widget _buildPlayer(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: KeyboardListener(
-        focusNode: FocusNode(),
+        focusNode: _playerFocus,
         autofocus: true,
         onKeyEvent: _onKey,
         child: Stack(
@@ -484,8 +518,8 @@ class _PlayerVlcPageState extends State<PlayerVlcPage> {
                 ),
               ),
             if (_showBar) ...<Widget>[
-              Positioned(left: 0, right: 0, top: 0, child: _topBar()),
-              Positioned(left: 0, right: 0, bottom: 0, child: _bottomBar()),
+              Positioned(left: 0, right: 0, top: 0, child: SafeArea(bottom: false, child: _topBar())),
+              Positioned(left: 0, right: 0, bottom: 0, child: SafeArea(top: false, child: _bottomBar())),
             ],
           ],
         ),

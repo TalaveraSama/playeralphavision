@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Alpha Vision necesita acceder a tu servidor de televisión cuando está en tu red local.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- Muchos paneles Xtream Codes / XUI.one sirven los streams por HTTP. -->
