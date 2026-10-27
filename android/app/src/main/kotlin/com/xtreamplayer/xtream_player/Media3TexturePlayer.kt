@@ -1,6 +1,9 @@
 package com.xtreamplayer.xtream_player
 
 import android.content.Context
+import android.graphics.Bitmap
+import java.io.ByteArrayOutputStream
+import androidx.media3.common.text.CueGroup
 import android.graphics.SurfaceTexture
 import android.view.Surface
 import androidx.media3.common.C
@@ -70,7 +73,12 @@ class Media3TexturePlayer(
         player.setVideoSurface(surface)
 
         player.addListener(object : Player.Listener {
+            override fun onCues(cueGroup: CueGroup) {
+                sendCues(cueGroup)
+            }
+
             override fun onPlayerError(error: PlaybackException) {
+                clearCues()
                 android.util.Log.e("TEXPLAYER", "PLAYER_ERROR: " + error.message, error)
                 channel.invokeMethod("onError", null)
             }
@@ -78,7 +86,10 @@ class Media3TexturePlayer(
             override fun onPlaybackStateChanged(state: Int) {
                 channel.invokeMethod("onBuffering", state == Player.STATE_BUFFERING)
                 if (state == Player.STATE_READY) channel.invokeMethod("onReady", null)
-                if (state == Player.STATE_ENDED) channel.invokeMethod("onComplete", null)
+                if (state == Player.STATE_ENDED) {
+                    clearCues()
+                    channel.invokeMethod("onComplete", null)
+                }
             }
 
             override fun onTracksChanged(tracks: Tracks) {
@@ -103,6 +114,34 @@ class Media3TexturePlayer(
     }
 
     val textureId: Long get() = surfaceEntry.id()
+
+    // A SurfaceTexture carries video pixels only, not ExoPlayer text output.
+    // Forward timed cues separately so Flutter can apply the user's text style.
+    private fun clearCues() = channel.invokeMethod("onCues", emptyList<Any>())
+
+    private fun sendCues(group: CueGroup) {
+        val payload = group.cues.map { cue ->
+            val bitmapBytes = cue.bitmap?.let { bitmap ->
+                ByteArrayOutputStream().use { stream ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                    stream.toByteArray()
+                }
+            }
+            mapOf(
+                "text" to cue.text?.toString(),
+                "bitmap" to bitmapBytes,
+                "position" to cue.position,
+                "positionAnchor" to cue.positionAnchor,
+                "line" to cue.line,
+                "lineType" to cue.lineType,
+                "lineAnchor" to cue.lineAnchor,
+                "size" to cue.size,
+                "bitmapHeight" to cue.bitmapHeight,
+                "alignment" to cue.textAlignment?.name,
+            )
+        }
+        channel.invokeMethod("onCues", payload)
+    }
 
     private fun refreshTracks() {
         audioRefs.clear()
@@ -154,6 +193,7 @@ class Media3TexturePlayer(
 
     private fun selectTrack(type: Int, index: Int) {
         refreshTracks()
+        if (type == C.TRACK_TYPE_TEXT) clearCues()
         val refs = if (type == C.TRACK_TYPE_AUDIO) audioRefs else textRefs
         val builder = player.trackSelectionParameters.buildUpon()
         if (index < 0) {
@@ -190,6 +230,7 @@ class Media3TexturePlayer(
                 val headers = call.argument<Map<String, String>>("headers") ?: emptyMap()
                 val isLive = call.argument<Boolean>("isLive") ?: true
                 android.util.Log.e("TEXPLAYER", "setUrl url=" + url + " live=" + isLive + " headers=" + headers)
+                clearCues()
                 player.setMediaSource(buildSource(url, headers))
                 result.success(null)
             }
@@ -206,6 +247,7 @@ class Media3TexturePlayer(
                 result.success(null)
             }
             "seekTo" -> {
+                clearCues()
                 player.seekTo(call.argument<Number>("ms")?.toLong() ?: 0L)
                 result.success(null)
             }

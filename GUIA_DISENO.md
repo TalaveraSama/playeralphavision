@@ -425,3 +425,15 @@ pendientes de validar con el SDK instalado.
 - Android conserva motores y selección. Guía completa: `GUIA_IPHONE.md`.
 - Sintaxis Dart, plist y shell verificadas; compilación CocoaPods/Xcode, tests Flutter,
   firma y reproducción en iPhone real pendientes (sin SDK Apple/Flutter aquí).
+
+
+### 1.2.44 — subtítulos visibles y estilo del perfil en Media3
+
+- Media3 envía cues temporizados (texto e imagen) desde el motor nativo a Flutter.
+- Nueva capa sobre la textura, en vídeo general y TV Nova3, también a pantalla
+  completa; texto con color/tamaño de Ajustes y sombra para legibilidad.
+- Limpieza al cambiar pista/contenido, desactivar, buscar, finalizar o fallar.
+- Cues de imagen conservan su dibujo; no se pueden recolorear/redimensionar letras
+  individuales ni editar subtítulos grabados en el vídeo. Los otros motores no cambian.
+- Guía y limitaciones: `SUBTITULOS_MEDIA3.md`; pruebas: `player_subtitles_test.dart`.
+- Sintaxis comprobada. Flutter analyzer/tests, Gradle y reproducción real pendientes.

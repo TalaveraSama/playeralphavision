@@ -1,7 +1,7 @@
 name: xtream_player
 description: "Cliente OTT/IPTV multiplataforma (Android/iOS) con el diseño NOVA para la API de Xtream Codes y paneles XUI.one."
 publish_to: "none"
-version: 1.2.43+1047
+version: 1.2.44+1048
 environment:
   sdk: ">=3.4.0 <4.0.0"
 

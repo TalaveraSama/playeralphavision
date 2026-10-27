@@ -9,6 +9,8 @@ import '../../core/models/epg_entry.dart';
 import '../../core/models/media_item.dart';
 import '../../core/config/ads_config.dart';
 import '../../widgets/player_notice.dart';
+import '../../widgets/player_subtitles.dart';
+import '../../core/config/app_config.dart' show parseHexColor;
 import '../../widgets/nova/nova_ui.dart';
 import '../../widgets/nova/nova3_live_layout.dart';
 import '../../widgets/nova/nova3_loading.dart';
@@ -45,6 +47,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   int? _textureId;
   int _playerId = 0;
   bool _unavailable = false;
+  List<PlayerSubtitleCue> _subtitleCues = const <PlayerSubtitleCue>[];
   Timer? _autoSwitchTimer;
   int _index = 0;
   int _failCount = 0;
@@ -109,7 +112,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   Future<void> _load(PlayableItem item) async {
-    if (mounted) setState(() { _buffering = true; _networkSample = null; });
+    if (mounted) setState(() { _buffering = true; _networkSample = null; _subtitleCues = const <PlayerSubtitleCue>[]; });
     if (_unavailable && mounted) setState(() => _unavailable = false);
     _startWatchdog();
     await _channel?.invokeMethod('setUrl', <String, dynamic>{'url': item.url, 'headers': widget.headers, 'isLive': item.isLive});
@@ -118,6 +121,9 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   Future<void> _onMethod(MethodCall call) async {
     switch (call.method) {
+      case 'onCues':
+        if (mounted) setState(() => _subtitleCues = PlayerSubtitleCue.decode(call.arguments));
+        break;
       case 'onError':
         _retry();
         break;
@@ -550,6 +556,16 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     child: _buildPlayer(context),
   );
 
+  Widget _videoWithSubtitles({required double bottomInset}) {
+    final app = context.watch<AppState>();
+    return Stack(fit: StackFit.expand, children: <Widget>[
+      Texture(textureId: _textureId!),
+      PlayerSubtitles(cues: _subtitleCues,
+        color: parseHexColor(app.subtitleColor, Colors.white),
+        fontSize: app.subtitleSize, bottomInset: bottomInset),
+    ]);
+  }
+
   Widget _buildPlayer(BuildContext context) {
     if (_nova3Live) {
       return PopScope(
@@ -569,7 +585,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
               : _textureId == null
                   ? Nova3Loading(bytesPerSecond: _networkSample)
                   : Stack(fit: StackFit.expand, children: <Widget>[
-                      Texture(textureId: _textureId!),
+                      _videoWithSubtitles(bottomInset: _nova3Fullscreen ? 24 : 44),
                       if (_buffering) Nova3Loading(bytesPerSecond: _networkSample),
                     ])),
           controls: Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
@@ -596,7 +612,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
                       color: Colors.black,
                       child: Center(child: CircularProgressIndicator()),
                     )
-                  : Texture(textureId: _textureId!),
+                  : _videoWithSubtitles(bottomInset: _showBar ? 100 : 24),
             ),
           ),
           if (_unavailable)
