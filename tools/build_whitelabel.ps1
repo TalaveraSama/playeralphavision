@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
 .SYNOPSIS
   Genera el APK de marca blanca a partir de la configuración del panel.
@@ -26,6 +26,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'flutter_logged.ps1')
 
 function Info($m) { Write-Host "[marca] $m" -ForegroundColor Cyan }
 function Ok($m) { Write-Host "[marca] $m" -ForegroundColor Green }
@@ -62,7 +63,10 @@ if (-not $env:ANDROID_HOME) {
   $sdk = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
   if (Test-Path -LiteralPath $sdk) { $env:ANDROID_HOME = $sdk; $env:ANDROID_SDK_ROOT = $sdk }
 }
-Info ("Flutter: " + ((flutter --version 2>&1) | Select-Object -First 1))
+$versionLog = Join-Path $projectRoot 'build\whitelabel-flutter-version.log'
+$versionCode = Invoke-FlutterLogged -Arguments @('--version') -LogPath $versionLog
+if ($versionCode -ne 0) { Fail "Flutter no pudo arrancar. Revisa $versionLog" }
+Info ("Flutter: " + (Get-Content -LiteralPath $versionLog -Encoding UTF8 | Select-Object -First 1))
 
 # ---------------------------------------------------------------- config
 $brandsDir = Join-Path $projectRoot 'admin_panel\brands'
@@ -91,7 +95,7 @@ if ([string]::IsNullOrEmpty($ConfigPath)) {
 }
 if (-not (Test-Path -LiteralPath $ConfigPath)) { Fail "No existe el archivo: $ConfigPath" }
 
-$rawJson = Get-Content -LiteralPath $ConfigPath -Raw
+$rawJson = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8
 try {
   $config = $rawJson | ConvertFrom-Json
 } catch {
@@ -296,37 +300,57 @@ if ($SkipBuild) { Ok 'Listo (sin compilar por -SkipBuild).'; exit 0 }
 # ---------------------------------------------------------------- compilar
 Push-Location $projectRoot
 $previousPreference = $ErrorActionPreference
-# Gradle escribe avisos de Java en stderr: aquí no son errores, se revisa el
-# código de salida a mano.
-$ErrorActionPreference = 'Continue'
+# El helper captura stderr como texto; solo el código de salida decide si
+# Flutter falló. Los errores reales de archivos/scripts siguen deteniendo todo.
+$ErrorActionPreference = 'Stop'
 $logPath = Join-Path $projectRoot 'build\whitelabel-build.log'
 try {
   New-Item -ItemType Directory -Force -Path (Split-Path -Parent $logPath) | Out-Null
 
   Info 'Descargando dependencias...'
-  & flutter pub get *> $logPath
-  if ($LASTEXITCODE -ne 0) {
-    Get-Content -LiteralPath $logPath -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
-    Fail 'No se pudieron descargar las dependencias (flutter pub get).'
+  $pubLog = Join-Path $projectRoot 'build\whitelabel-pub-get.log'
+  $code = Invoke-FlutterLogged -Arguments @('pub', 'get') -LogPath $pubLog
+  if ($code -ne 0) {
+    Get-Content -LiteralPath $pubLog -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
+    Fail "No se pudieron descargar las dependencias. Detalle en $pubLog"
   }
 
   # Se borran APKs de compilaciones anteriores: antes se copiaban restos
   # viejos a dist\ (arm32/arm64 con versiones antiguas).
   Get-ChildItem -LiteralPath (Join-Path $projectRoot 'build\app\outputs\flutter-apk') -Filter '*.apk' -ErrorAction SilentlyContinue |
-    Remove-Item -Force -ErrorAction SilentlyContinue
+    Remove-Item -Force -ErrorAction Stop
   Info 'Compilando APK universal... (puede tardar unos minutos)'
-  & flutter build apk --release *> $logPath
-  $code = $LASTEXITCODE
-  Get-Content -LiteralPath $logPath -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
+  $code = Invoke-FlutterLogged -Arguments @('build', 'apk', '--release') -LogPath $logPath
+  Get-Content -LiteralPath $logPath -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
   if ($code -ne 0) { Fail "La compilación falló (código $code). Detalle en build\whitelabel-build.log" }
+
+  # Preservar la universal antes de otra invocación de Gradle.
+  $stagingDir = Join-Path $projectRoot 'build\whitelabel-apks'
+  New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
+  Get-ChildItem -LiteralPath $stagingDir -Filter '*.apk' -ErrorAction SilentlyContinue |
+    Remove-Item -Force -ErrorAction Stop
+  $universalApk = Join-Path $projectRoot 'build\app\outputs\flutter-apk\app-release.apk'
+  if (-not (Test-Path -LiteralPath $universalApk)) { Fail 'Flutter terminó sin generar app-release.apk.' }
+  Copy-Item -LiteralPath $universalApk -Destination $stagingDir -Force -ErrorAction Stop
+  Ok 'APK universal generado y protegido antes de compilar por arquitectura.'
 
   # APKs por arquitectura SIEMPRE: si no se generan, dist\ reutiliza los de
   # una compilacion anterior y se reparten versiones viejas.
   Info 'Compilando APK por arquitectura...'
-  & flutter build apk --release --split-per-abi *> $logPath
-  $code = $LASTEXITCODE
-  Get-Content -LiteralPath $logPath -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
-  if ($code -ne 0) { Warn 'Fallo la compilacion por arquitectura; se conserva la universal.' }
+  $splitLog = Join-Path $projectRoot 'build\whitelabel-split-abi.log'
+  Info "Este segundo paso también puede tardar varios minutos. Registro: $splitLog"
+  $code = Invoke-FlutterLogged -Arguments @('build', 'apk', '--release', '--split-per-abi') -LogPath $splitLog
+  Get-Content -LiteralPath $splitLog -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
+  if ($code -ne 0) {
+    Warn "Falló la compilación por arquitectura (código $code); se entrega solo la universal. Detalle en $splitLog"
+  } else {
+    foreach ($abi in @('armeabi-v7a', 'arm64-v8a', 'x86_64')) {
+      $splitApk = Join-Path $projectRoot "build\app\outputs\flutter-apk\app-$abi-release.apk"
+      if (Test-Path -LiteralPath $splitApk) {
+        Copy-Item -LiteralPath $splitApk -Destination $stagingDir -Force -ErrorAction Stop
+      } else { Warn "No se encontró el APK $abi; no se reutilizará uno anterior." }
+    }
+  }
 } finally {
   $ErrorActionPreference = $previousPreference
   Pop-Location
@@ -338,7 +362,12 @@ New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 $safeName = ($appName -replace '[^A-Za-z0-9\-_]', '-') -replace '-+', '-'
 if ([string]::IsNullOrWhiteSpace($safeName)) { $safeName = 'app' }
 
-$apkDir = Join-Path $projectRoot 'build\app\outputs\flutter-apk'
+# No dejar variantes anteriores de esta misma versión si hoy falló split ABI.
+foreach ($suffix in @('', '-arm32', '-arm64', '-x86_64')) {
+  $oldTarget = Join-Path $distDir "$safeName-$targetVersion$suffix.apk"
+  if (Test-Path -LiteralPath $oldTarget) { Remove-Item -LiteralPath $oldTarget -Force -ErrorAction Stop }
+}
+$apkDir = $stagingDir
 # Solo APK de release: los de depuración son enormes y no sirven para repartir.
 $apks = Get-ChildItem -LiteralPath $apkDir -Filter '*.apk' -ErrorAction SilentlyContinue |
   Where-Object { $_.Name -notlike '*debug*' }
