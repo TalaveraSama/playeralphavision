@@ -369,3 +369,30 @@ no reemplazan la compilación ni verifican el funcionamiento real de Media3.
 - La densidad `MediaGrid.density` es 1 por defecto y 0.8 solo para TV Nova3.
 - Pruebas añadidas: `flutter test test/nova3_compact_test.dart`. Compilación y
   validación en TV/teléfono pendientes de ejecutar con Flutter instalado.
+
+
+### Nova3 1.2.41 — ficha de película horizontal
+
+- Nova3 usa `lib/widgets/nova/nova3_movie_details.dart` al abrir una película.
+  Información a la izquierda, imagen 16:9 con botón de reproducción a la derecha,
+  cuatro acciones y fila horizontal de recomendaciones. En ventanas de menos
+  de 520 dp la ficha se apila para no desbordar, sin solicitar modo vertical.
+- Se conservan los metadatos disponibles del catálogo cuando la ficha del
+  proveedor no incluye todos los campos. No se inventan país, título original,
+  idiomas, resoluciones, premios ni subtítulos disponibles.
+- La sinopsis se acorta visualmente; Más abre el texto completo. Favorito usa
+  el estado real de la cuenta. La imagen es una vista previa estática, no crea
+  un segundo reproductor ni inicia un stream automáticamente.
+- Pantalla completa y el botón de reproducción abren `openPlayer` como antes,
+  respetando anuncios, motor elegido y compatibilidad. Idioma y Resolución
+  informan de las opciones disponibles durante reproducción, sin simular
+  selectores de pistas/calidades no recibidas en la ficha.
+- Quizás te guste usa películas reales del catálogo, excluye la actual y los
+  duplicados; prioriza categoría, géneros y valoración, con hasta 12 resultados.
+  Si no hay catálogo descargado se intenta cargarlo sin bloquear la película.
+- Los demás temas y las fichas de serie se mantienen sin cambios visuales.
+
+Pruebas añadidas: `flutter test test/nova3_movie_details_test.dart` (recomendaciones,
+640×360, 960×540 y 1440×810, reproducción y favoritos). Sintaxis comprobada, pero
+compilación, `flutter analyze`, pruebas Flutter y reproducción en equipo real
+pendientes de validar con el SDK instalado.

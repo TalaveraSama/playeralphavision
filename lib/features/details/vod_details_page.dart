@@ -14,6 +14,7 @@ import '../../core/utils/format_utils.dart';
 import '../../widgets/nova/nova_art.dart';
 import '../../widgets/nova/nova_detail_parts.dart';
 import '../../widgets/nova/nova_ui.dart';
+import '../../widgets/nova/nova3_movie_details.dart';
 import '../../widgets/state_views.dart';
 import '../catalog/catalog_cache.dart';
 import '../player/open_player.dart';
@@ -38,11 +39,15 @@ class _VodDetailsPageState extends State<VodDetailsPage> {
   String? _error;
   _VodTab _tab = _VodTab.details;
   String? _tmdbTrailer;
+  List<MediaItem> _recommendationPool = CatalogCache.downloaded(MediaKind.movie);
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+      if (context.read<ConfigController>().theme.isNova3) _loadRecommendations();
+    });
   }
 
   Future<void> _load() async {
@@ -57,6 +62,16 @@ class _VodDetailsPageState extends State<VodDetailsPage> {
       setState(() {
         _item = detailed.copyWith(
           icon: detailed.icon ?? widget.item.icon,
+          backdrop: detailed.backdrop ?? widget.item.backdrop,
+          categoryId: detailed.categoryId ?? widget.item.categoryId,
+          genre: detailed.genre ?? widget.item.genre,
+          plot: detailed.plot ?? widget.item.plot,
+          director: detailed.director ?? widget.item.director,
+          cast: detailed.cast ?? widget.item.cast,
+          rating: detailed.rating ?? widget.item.rating,
+          releaseDate: detailed.releaseDate ?? widget.item.releaseDate,
+          duration: detailed.duration ?? widget.item.duration,
+          containerExtension: detailed.containerExtension ?? widget.item.containerExtension,
           name: detailed.name.isEmpty ? widget.item.name : detailed.name,
         );
         _loading = false;
@@ -69,6 +84,32 @@ class _VodDetailsPageState extends State<VodDetailsPage> {
       });
     }
   }
+
+  Future<void> _loadRecommendations() async {
+    if (_recommendationPool.any((other) => other.favoriteKey != widget.item.favoriteKey)) return;
+    try {
+      final pool = await CatalogCache.items(context.read<AppState>().client, MediaKind.movie, null);
+      if (mounted) setState(() => _recommendationPool = pool);
+    } catch (_) {
+      // La ficha y la reproducción siguen disponibles si falla este catálogo.
+    }
+  }
+
+  Future<void> _showMore() => showDialog<void>(context: context,
+    builder: (context) => AlertDialog(title: Text(cleanDetailName(_item.name)),
+      content: SingleChildScrollView(child: Text(_item.plot?.trim().isNotEmpty == true
+        ? _item.plot! : 'Sin sinopsis disponible.')),
+      actions: <Widget>[TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))]));
+
+  Future<void> _showPlaybackInfo(bool language) => showDialog<void>(context: context,
+    builder: (context) => AlertDialog(title: Text(language ? 'Idioma y subtítulos' : 'Resolución'),
+      content: Text(language
+        ? 'Las pistas disponibles se consultan al reproducir. Abre la película y usa el botón de audio y subtítulos del reproductor.'
+        : 'Se reproduce la calidad enviada por tu proveedor. No se han recibido variantes de resolución para elegir en esta ficha.'),
+      actions: <Widget>[
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+        FilledButton(onPressed: () { Navigator.pop(context); _play(); }, child: const Text('Reproducir')),
+      ]));
 
   Future<void> _play() async {
     final AppState app = context.read<AppState>();
@@ -199,6 +240,23 @@ class _VodDetailsPageState extends State<VodDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final AppState app = context.watch<AppState>();
+    if (context.watch<ConfigController>().theme.isNova3) {
+      return Scaffold(backgroundColor: const Color(0xFF080808), body: SafeArea(
+        child: FocusTraversalGroup(child: Nova3MovieDetails(
+          item: _item, favorite: app.isFavorite(_item), loading: _loading,
+          error: _error, onRetry: _load,
+          recommendations: nova3MovieRecommendations(_item, _recommendationPool),
+          onBack: () => Navigator.of(context).maybePop(),
+          onPlay: _loading ? null : _play,
+          onFavorite: () => app.toggleFavorite(_item),
+          onLanguage: () => _showPlaybackInfo(true),
+          onQuality: () => _showPlaybackInfo(false),
+          onMore: _showMore,
+          onRecommendation: (other) => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => VodDetailsPage(item: other))),
+        )),
+      ));
+    }
     final bool wide =
         MediaQuery.sizeOf(context).width >= NovaBreakpoints.details;
 
