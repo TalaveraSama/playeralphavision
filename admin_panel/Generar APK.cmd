@@ -12,10 +12,16 @@ echo  Proyecto: %PROJECT%
 echo ============================================================
 echo.
 
-powershell -ExecutionPolicy Bypass -File "%PROJECT%\tools\build_whitelabel.ps1" ^
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT%\tools\build_whitelabel.ps1" ^
   -ConfigPath "%PROJECT%\admin_panel\config.json" -SplitAbi
 
+set "RESULT=%ERRORLEVEL%"
 echo.
-echo Los APK quedan en la carpeta dist\
+if not "%RESULT%"=="0" (
+  echo ERROR: no se completo la generacion. Revisa el mensaje anterior.
+  echo No se confirma ningun APK nuevo; puede haber archivos de ejecuciones anteriores en dist\.
+) else (
+  echo Generacion completada. Revisa los APK de dist\.
+)
 pause
-endlocal
+endlocal & exit /b %RESULT%

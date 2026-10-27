@@ -58,3 +58,17 @@ No compila APK ni necesita Android SDK. Aquí solo se verificaron estructura y
 sintaxis con parser; no hay Windows/PowerShell/Flutter para ejecutar esta prueba
 ni verificar una compilación real. Ejecuta la prueba en Windows y después tu
 compilación habitual.
+
+
+## Correccion: `System.Object[]` al consultar la version de Flutter
+
+Si Flutter funciona directamente pero el log dice `System.Object[] no se reconoce`,
+el lanzador estaba convirtiendo varias rutas en un comando. La version corregida
+resuelve explicitamente `flutter.bat`, elige la primera coincidencia del PATH y
+comprueba que sea un archivo. No reinstales Flutter ni cambies tu firma por esto.
+
+Copia `tools/flutter_logged.ps1` corregido y vuelve a ejecutar el generador.
+Opcionalmente actualiza `admin_panel/Generar APK.cmd` para que no anuncie exito
+cuando la compilacion falla. La prueba `tools/test_build_logging.ps1` ahora incluye
+un launcher Unix junto al BAT y un segundo SDK simulado para prevenir regresiones.
+Estas pruebas necesitan Windows; aqui se verificaron reglas y sintaxis estaticas.

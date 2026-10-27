@@ -14,10 +14,17 @@ echo WARNING: Java native access 1>&2
 if "%1"=="--fail" exit /b 23
 exit /b 0
 '@
-  [System.IO.File]::WriteAllText($fakeFlutter, $fakeScript.Replace("`n", "`r`n"))
-  $env:Path = "$tempRoot;$oldPath"
+  [System.IO.File]::WriteAllText($fakeFlutter, $fakeScript.Replace("`r`n", "`n").Replace("`n", "`r`n"))
+  # Reproduce a real Flutter SDK: Unix launcher plus .bat, and multiple SDKs.
+  [IO.File]::WriteAllText((Join-Path $tempRoot 'flutter'), '# Unix launcher: must not execute on Windows')
+  $secondSdk = Join-Path $tempRoot 'second sdk'
+  New-Item -ItemType Directory -Path $secondSdk | Out-Null
+  [IO.File]::WriteAllText((Join-Path $secondSdk 'flutter.bat'), "@echo off`r`nexit /b 99`r`n")
+  $env:Path = "$tempRoot;$secondSdk;$oldPath"
   $log = Join-Path $tempRoot 'build log.txt'
   $before = $Error.Count
+  $code = Invoke-FlutterLogged -Arguments @('--version') -LogPath $log
+  if ($code -ne 0) { throw "Version check with multiple Flutter launchers failed: $code" }
   $code = Invoke-FlutterLogged -Arguments @('build', 'apk', '--release') -LogPath $log
   if ($code -ne 0) { throw "Expected success, got $code" }
   $text = Get-Content -LiteralPath $log -Raw
@@ -26,7 +33,7 @@ exit /b 0
   if ($Error.Count -ne $before) { throw 'Warnings created PowerShell errors' }
   $code = Invoke-FlutterLogged -Arguments @('--fail') -LogPath $log
   if ($code -ne 23) { throw "Expected failure code 23, got $code" }
-  Write-Host 'PASS: plain warnings, real exit codes, spaced paths and ampersands.'
+  Write-Host 'PASS: plain warnings, real exit codes, spaced paths, ampersands and multiple Flutter launchers.'
 } finally {
   $env:Path = $oldPath
   Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
