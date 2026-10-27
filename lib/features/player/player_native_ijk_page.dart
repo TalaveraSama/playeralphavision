@@ -182,6 +182,7 @@ class _PlayerNativeIjkPageState extends State<PlayerNativeIjkPage> {
   }
 
   bool _onKey(KeyEvent event) {
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
     final LogicalKeyboardKey k = event.logicalKey;
     if (k == LogicalKeyboardKey.escape || k == LogicalKeyboardKey.goBack) {

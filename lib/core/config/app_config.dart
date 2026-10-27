@@ -3,6 +3,7 @@ import 'dart:ui' show Brightness, Color;
 import '../app_info.dart';
 import '../utils/parse_utils.dart';
 import 'ads_config.dart';
+import 'usage_reminder_config.dart';
 
 /// Convierte `#RRGGBB`, `#AARRGGBB`, `RRGGBB` o un entero en un [Color].
 Color parseHexColor(dynamic value, Color fallback) {
@@ -625,6 +626,7 @@ class AppConfig {
     this.xtream = const XtreamConfig(),
     this.tmdb = const TmdbConfig(),
     this.ads = const AdsConfig(),
+    this.usageReminder = const UsageReminderConfig(),
     this.update = const UpdateConfig(),
     this.features = const FeaturesConfig(),
     this.player = const PlayerConfig(),
@@ -645,6 +647,7 @@ class AppConfig {
   final XtreamConfig xtream;
   final TmdbConfig tmdb;
   final AdsConfig ads;
+  final UsageReminderConfig usageReminder;
   final UpdateConfig update;
   final FeaturesConfig features;
   final PlayerConfig player;
@@ -668,6 +671,7 @@ class AppConfig {
         xtream: XtreamConfig.fromJson(asMap(json['xtream'])),
         tmdb: TmdbConfig.fromJson(asMap(json['tmdb'])),
         ads: AdsConfig.fromJson(asMap(json['ads'])),
+        usageReminder: UsageReminderConfig.fromJson(asMap(json['usageReminder'])),
         update: UpdateConfig.fromJson(asMap(json['update'])),
         features: FeaturesConfig.fromJson(asMap(json['features'])),
         player: PlayerConfig.fromJson(asMap(json['player'])),
@@ -683,6 +687,7 @@ class AppConfig {
         'xtream': xtream.toJson(),
         'tmdb': tmdb.toJson(),
         'ads': ads.toJson(),
+        'usageReminder': usageReminder.toJson(),
         'update': update.toJson(),
         'features': features.toJson(),
         'player': player.toJson(),
@@ -696,6 +701,7 @@ class AppConfig {
     XtreamConfig? xtream,
     TmdbConfig? tmdb,
     AdsConfig? ads,
+    UsageReminderConfig? usageReminder,
     UpdateConfig? update,
     FeaturesConfig? features,
     PlayerConfig? player,
@@ -709,6 +715,7 @@ class AppConfig {
       xtream: xtream ?? this.xtream,
       tmdb: tmdb ?? this.tmdb,
       ads: ads ?? this.ads,
+      usageReminder: usageReminder ?? this.usageReminder,
       update: update ?? this.update,
       features: features ?? this.features,
       player: player ?? this.player,

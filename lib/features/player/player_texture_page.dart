@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../core/models/epg_entry.dart';
+import '../../core/models/media_item.dart';
+import '../../core/config/ads_config.dart';
+import '../../widgets/player_notice.dart';
 import '../../widgets/nova/nova_ui.dart';
 import '../../widgets/nova/nova3_live_layout.dart';
 import '../../widgets/nova/nova3_loading.dart';
@@ -22,11 +25,13 @@ class PlayerTexturePage extends StatefulWidget {
     required this.playlist,
     this.initialIndex = 0,
     this.headers = const <String, String>{},
+    this.categoryName,
   });
 
   final List<PlayableItem> playlist;
   final int initialIndex;
   final Map<String, String> headers;
+  final String? categoryName;
 
   @override
   State<PlayerTexturePage> createState() => _PlayerTexturePageState();
@@ -471,6 +476,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   bool _onKey(KeyEvent event) {
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
     if (event is KeyDownEvent) {
       final LogicalKeyboardKey k = event.logicalKey;
       // Teclas universales del mando: play/pausa y seek.
@@ -536,7 +542,15 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PlayerNotice(
+    mediaType: _current.isLive ? AdMediaType.live :
+      _current.source?.kind == MediaKind.series ? AdMediaType.series : AdMediaType.vod,
+    title: _current.title,
+    categoryName: widget.categoryName,
+    child: _buildPlayer(context),
+  );
+
+  Widget _buildPlayer(BuildContext context) {
     if (_nova3Live) {
       return PopScope(
         canPop: !_nova3Fullscreen,

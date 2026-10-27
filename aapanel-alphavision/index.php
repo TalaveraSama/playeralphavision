@@ -141,8 +141,14 @@ function nova_default(): array {
       ]],
     ],
     'xtream' => ['server' => '', 'userAgent' => 'AlphaVision-Player', 'streamToken' => ''],
+    'usageReminder' => [
+      'enabled' => true, 'intervalMinutes' => 240, 'countdownSeconds' => 10,
+      'title' => 'Consejos',
+      'message' => 'Ya usaste la app por {hours} horas. Te recomendamos descansar un poco por tu salud. La reproducción se cerrará después de {seconds} segundos. Pulsa «Continuar usando» si quieres seguir.',
+      'buttonLabel' => 'Continuar usando',
+    ],
     'ads' => [
-      'enabled' => false, 'rotationSeconds' => 12, 'inPlayer' => false,
+      'enabled' => false, 'rotationSeconds' => 12, 'inPlayer' => false, 'inPlayerSeconds' => 0,
       'placements' => [
         'banner' => ['enabled' => true, 'maxPerHour' => 12],
         'interstitial' => ['enabled' => true, 'maxPerHour' => 3],
@@ -454,7 +460,7 @@ if (!nova_logged($SESSION_H)) { nova_login_page($loginError); exit; }
 const q = s => '?action=' + s;
 let S = null, VERSIONS = [], URLS = {}, tab = 'marca';
 
-const TABS = [['dashboard','Panel'],['marca','Marca'],['imagenes','Imágenes'],['diseno','Diseño'],['anuncios','Anuncios'],['update','Versión y APK']];
+const TABS = [['dashboard','Panel'],['marca','Marca'],['imagenes','Imágenes'],['diseno','Diseño'],['anuncios','Anuncios'],['avisos','Avisos y descanso'],['update','Versión y APK']];
 const get = p => p.split('.').reduce((a,k)=>a==null?a:a[k], S);
 const set = (p,v) => { const ks=p.split('.'); let o=S; for(let i=0;i<ks.length-1;i++){ if(o[ks[i]]==null)o[ks[i]]={}; o=o[ks[i]]; } o[ks[ks.length-1]]=v; };
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -630,18 +636,35 @@ function draw(){
       ${chk('Insertar anuncios en el banner','branding.heroAds')}
       <div class="hint">Elige qué rota en el banner (mixto, películas, series o en vivo) y si se intercala un anuncio cada N carátulas.</div>
     </section>`;
+  else if (tab === 'avisos') h = `
+    <section><h2>Recordatorio de descanso</h2>
+      ${chk('Activar recordatorio de descanso','usageReminder.enabled')}
+      <div class="row">${inp('Mostrar después de (minutos, 240 = 4 horas)','usageReminder.intervalMinutes','number')}
+        ${inp('Cuenta atrás (segundos, de 5 a 120)','usageReminder.countdownSeconds','number')}</div>
+      <div class="row">${inp('Título','usageReminder.title')}${inp('Texto del botón','usageReminder.buttonLabel')}</div>
+      <label>Nota que aparecerá sobre la reproducción</label>
+      <textarea data-p="usageReminder.message">${esc(get('usageReminder.message'))}</textarea>
+      <div class="hint">Variables: <code>{hours}</code>, <code>{minutes}</code>, <code>{seconds}</code>.
+        Cuenta tiempo con la app iniciada en primer plano; cambiar de canal no reinicia el plazo.
+        Continuar reinicia el intervalo. Sin respuesta, Android sale de la app; iOS vuelve a Inicio sin vídeo.
+        Es independiente de Anuncios: funciona con la publicidad desactivada.
+        Requiere APK 1.2.42 o posterior. Pulsa Guardar en el servidor.</div>
+    </section>`;
   else if (tab === 'anuncios') {
     h = `<section><h2>Anuncios</h2>
-      ${chk('Anuncios activados','ads.enabled')}${chk('Franja sobre el reproductor','ads.inPlayer')}
+      ${chk('Anuncios activados','ads.enabled')}${chk('Avisos sobre Media3 / ExoPlayer','ads.inPlayer')}
       <div class="row">${inp('Segundos por anuncio (rotación)','ads.rotationSeconds','number')}${inp('Franja visible en el reproductor (s, 0 = fija)','ads.inPlayerSeconds','number')}</div>
       <div class="hint"><b>Tamaños de imagen (TV):</b> Banner <b>728×90</b> · Interstitial <b>1920×1080</b> · Preroll <b>1280×720</b> (16:9) · Overlay <b>400×225</b>.
+      En <b>Media3/ExoPlayer</b> activa también Overlay (sin vídeo publicitario encima). Los otros motores conservan su interfaz.
+      El recordatorio de 4 horas se configura en <b>Avisos y descanso</b>, no aquí.
+      Los avisos deben tener Texto y estar activos; una imagen necesita URL. Los topes se aplican por dispositivo.
       La <b>franja del reproductor</b> rota su contenido cada «segundos por anuncio»; si solo hay 1 anuncio no se nota el cambio (añade varios).</div>
       <div class="row3">
         ${plc('Banner','banner')}${plc('Interstitial','interstitial')}${plc('Preroll','preroll')}${plc('Overlay','overlay')}
       </div>
     </section>`;
     (get('ads.ads')||[]).forEach((ad,i) => h += adHtml(ad,i));
-    h += `<button class="primary" onclick="addAd()">+ Añadir anuncio</button>`;
+    h += `<button class="primary" onclick="addAd()">+ Añadir anuncio</button> <button onclick="addMessageAd()">+ Añadir aviso de texto sobre el vídeo</button>`;
   }
   else h = `
     <section><h2>Versión publicada</h2>
@@ -703,14 +726,26 @@ const adHtml = (ad,i) => { const p='ads.ads.'+i+'.'; return `<div class="ad">
     <div><label>Cerrar a los (s)</label><input type="number" data-p="${p}skipAfterSec" value="${esc(ad.skipAfterSec)}"></div>
     <div><label>Peso</label><input type="number" data-p="${p}weight" value="${esc(ad.weight)}"></div>
   </div>
+  <label>Máximo diario en este dispositivo (vacío = sin límite)</label><input type="number" min="0" data-p="${p}frequencyCapPerDay" value="${esc(ad.frequencyCapPerDay)}">
   <div class="check"><input type="checkbox" data-p="${p}enabled" ${ad.enabled!==false?'checked':''}><span>Activo</span></div>
 </div>`; };
 
 function addAd(){
   S.ads.ads = S.ads.ads || [];
-  S.ads.ads.push({id:'anuncio-'+(S.ads.ads.length+1),type:'image',label:'Publicidad',mediaUrl:'',clickUrl:'',
+  S.ads.ads.push({id:'anuncio-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7),type:'image',label:'Publicidad',mediaUrl:'',clickUrl:'',
     title:'',text:'',durationSec:15,skipAfterSec:5,weight:3,frequencyCapPerDay:null,enabled:true,
     targeting:{mediaTypes:[],categories:[],keywords:[],hoursFrom:null,hoursTo:null}});
+  draw();
+}
+function addMessageAd(){
+  addAd();
+  const ad = S.ads.ads[S.ads.ads.length - 1];
+  ad.type = 'message'; ad.label = 'Aviso';
+  S.ads.enabled = true; S.ads.inPlayer = true;
+  S.ads.placements = S.ads.placements || {};
+  S.ads.placements.overlay = S.ads.placements.overlay || {maxPerHour:2};
+  S.ads.placements.overlay.enabled = true;
+  if (!(S.ads.placements.overlay.maxPerHour > 0)) S.ads.placements.overlay.maxPerHour = 2;
   draw();
 }
 function delAd(i){ S.ads.ads.splice(i,1); draw(); }

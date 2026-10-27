@@ -129,6 +129,7 @@ class _PlayerDkPageState extends State<PlayerDkPage> {
   }
 
   bool _onKey(KeyEvent event) {
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
     if (event is KeyDownEvent) {
       final LogicalKeyboardKey k = event.logicalKey;
       if (k == LogicalKeyboardKey.mediaRewind) { _playRelative(-1); return true; }

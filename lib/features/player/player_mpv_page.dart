@@ -338,6 +338,7 @@ class _PlayerMpvPageState extends State<PlayerMpvPage> {
 
   /// Control remoto (Fire TV / Android TV): cambiar canal, controles, back.
   bool _onKey(KeyEvent event) {
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
     final LogicalKeyboardKey k = event.logicalKey;
 

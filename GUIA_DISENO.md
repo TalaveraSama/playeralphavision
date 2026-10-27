@@ -396,3 +396,21 @@ Pruebas añadidas: `flutter test test/nova3_movie_details_test.dart` (recomendac
 640×360, 960×540 y 1440×810, reproducción y favoritos). Sintaxis comprobada, pero
 compilación, `flutter analyze`, pruebas Flutter y reproducción en equipo real
 pendientes de validar con el SDK instalado.
+
+
+### Nova3 1.2.42 — avisos sobre Media3 y descanso
+
+- Panel: nueva sección **Avisos y descanso**, texto editable, 240 minutos / 10 segundos,
+  botón Continuar usando. Independiente de publicidad. JSON incluidos con recordatorio
+  activado; JSON antiguos sin la sección conservan comportamiento sin recordatorio.
+- Temporizador global de sesión en primer plano; cambiar de canal no lo reinicia.
+  Continuar reinicia el plazo; vencer abandona rutas de vídeo y Android solicita salir.
+  iOS queda en Inicio. No se borra la cuenta ni se elimina ningún motor.
+- Conectada la franja informativa de mensajes/imágenes en Media3/ExoPlayer, con rotación,
+  topes y segmentación. No reproduce un segundo vídeo ni captura OK sobre el player.
+- Controladores de teclas de los motores dejan pasar el mando cuando hay un diálogo.
+- Publicidad de los JSON permanece desactivada y sin creativos; no se confunde con descanso.
+- Despliegue, fragmento JSON y pasos de prueba: `aapanel-alphavision/AVISOS_DESCANSO.md`.
+- Añadidas pruebas `usage_reminder_test.dart` y `player_notice_rotation_test.dart`.
+  Comprobadas sintaxis y estructuras JSON; analyzer, tests Flutter y APK pendientes
+  en un equipo con SDK. No hay APK compilado en este release.

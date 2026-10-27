@@ -216,6 +216,7 @@ List<AdCreative> pickAdRotation(
   AdContext context,
   AdCounters counters, {
   int limit = 4,
+  Set<AdKind>? kinds,
 }) {
   if (!config.enabled) return const <AdCreative>[];
   final AdPlacementConfig placement = config.placement(context.placement);
@@ -227,7 +228,9 @@ List<AdCreative> pickAdRotation(
     return const <AdCreative>[];
   }
   return config.usableAds
-      .where((AdCreative ad) => isAdEligible(ad, context))
+      .where((AdCreative ad) => (kinds == null || kinds.contains(ad.kind)) &&
+          isAdEligible(ad, context) && (ad.frequencyCapPerDay == null ||
+              dailyAdCount(fresh, ad.id) < ad.frequencyCapPerDay!))
       .take(limit)
       .toList();
 }

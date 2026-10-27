@@ -168,6 +168,12 @@ class ConfigController extends ChangeNotifier {
     );
   }
 
+  List<AdCreative> playerNoticeRotation({AdMediaType? mediaType, String? title, String? categoryName}) =>
+      pickAdRotation(_config.ads, AdContext(placement: AdPlacement.overlay,
+        now: DateTime.now(), mediaType: mediaType, title: title, categoryName: categoryName),
+        _adCounters, limit: _config.ads.ads.length,
+        kinds: const <AdKind>{AdKind.image, AdKind.message});
+
   /// Anuncio de pantalla completa (interstitial o preroll). Cuenta impresión.
   AdCreative? pickFullScreenAd(
     AdPlacement placement, {

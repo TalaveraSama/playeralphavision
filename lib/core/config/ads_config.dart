@@ -308,9 +308,10 @@ class AdsConfig {
     switch (placement) {
       case AdPlacement.banner:
         return usableAds.isNotEmpty;
+      case AdPlacement.overlay:
+        return usableAds.any((AdCreative ad) => ad.kind != AdKind.video);
       case AdPlacement.interstitial:
       case AdPlacement.preroll:
-      case AdPlacement.overlay:
         return usableAds
             .any((AdCreative ad) => ad.kind != AdKind.message);
     }

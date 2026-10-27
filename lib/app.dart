@@ -9,8 +9,9 @@ import 'features/home/home_shell.dart';
 import 'features/home/nova_shell.dart';
 import 'features/update/update_dialog.dart';
 import 'widgets/net_image.dart';
+import 'features/reminders/usage_reminder_host.dart';
 
-class XtreamPlayerApp extends StatelessWidget {
+class XtreamPlayerApp extends StatefulWidget {
   const XtreamPlayerApp({
     super.key,
     required this.appState,
@@ -21,15 +22,22 @@ class XtreamPlayerApp extends StatelessWidget {
   final ConfigController config;
 
   @override
+  State<XtreamPlayerApp> createState() => _XtreamPlayerAppState();
+}
+
+class _XtreamPlayerAppState extends State<XtreamPlayerApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<ConfigController>.value(value: config),
-        ChangeNotifierProvider<AppState>.value(value: appState),
+        ChangeNotifierProvider<ConfigController>.value(value: widget.config),
+        ChangeNotifierProvider<AppState>.value(value: widget.appState),
       ],
       child: Consumer<ConfigController>(
         builder: (BuildContext context, ConfigController controller, _) {
           return MaterialApp(
+            navigatorKey: _navigatorKey,
             title: controller.config.branding.appName,
             debugShowCheckedModeBanner: false,
             theme: buildThemeData(controller.theme),
@@ -45,7 +53,13 @@ class XtreamPlayerApp extends StatelessWidget {
                     maxScaleFactor: 1.25,
                   ),
                 ),
-                child: child ?? const SizedBox.shrink(),
+                child: UsageReminderHost(
+                  config: controller.config.usageReminder,
+                  active: context.watch<AppState>().isLoggedIn &&
+                      !context.watch<AppState>().restoring && !controller.loading,
+                  navigatorKey: _navigatorKey,
+                  child: child ?? const SizedBox.shrink(),
+                ),
               );
             },
             home: const _RootGate(),

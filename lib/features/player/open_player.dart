@@ -79,6 +79,7 @@ Future<void> openPlayer(
           playlist: playlist,
           initialIndex: initialIndex,
           headers: app.headers,
+          categoryName: categoryName,
         );
       },
     ),
@@ -93,6 +94,7 @@ Future<void> openPlayer(
           playlist: playlist,
           initialIndex: initialIndex,
           headers: app.headers,
+          categoryName: categoryName,
         ),
       ),
     );

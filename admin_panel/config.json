@@ -92,10 +92,19 @@
     "userAgent": "AlphaVision-Player",
     "streamToken": ""
   },
+  "usageReminder": {
+    "enabled": true,
+    "intervalMinutes": 240,
+    "countdownSeconds": 10,
+    "title": "Consejos",
+    "message": "Ya usaste la app por {hours} horas. Te recomendamos descansar un poco por tu salud. La reproducción se cerrará después de {seconds} segundos. Pulsa «Continuar usando» si quieres seguir.",
+    "buttonLabel": "Continuar usando"
+  },
   "ads": {
     "enabled": false,
     "rotationSeconds": 12,
     "inPlayer": false,
+    "inPlayerSeconds": 0,
     "placements": {
       "banner": {
         "enabled": true,
