@@ -170,3 +170,38 @@ de reemplazarlas. No prestes tu clave a quien solo necesita subir una publicaci�
 Se modificó Gradle y se comprobaron reglas de forma estática. Aquí no se creó
 ninguna clave privada, no se recibieron contraseñas y no se firmó ni compiló un
 APK: esas operaciones se ejecutan en tu equipo con tu SDK/JDK y secretos locales.
+
+
+## Error keytool `MissingFormatArgumentException: Format specifier %2$s`
+
+El registro recibido muestra que la generacion termino y el fallo ocurrio en
+`keytool -list -v`, al formatear el certificado. El asistente corregido fija el
+idioma Java a ingles y verifica sin `-v`, evitando esa ruta de formateo localizado.
+El aviso de JKS propietario no es por si mismo un error ni obliga a cambiar la clave.
+
+Reemplaza `tools/setup_android_signing.ps1` por la version corregida y abre el
+mismo `admin_panel/Crear firma de produccion.cmd`. Si no existen la clave final
+ni key.properties y nunca distribuiste con esa clave, puedes repetir la creacion.
+La version anterior limpiaba su archivo temporal cuando fallaba la verificacion;
+comprueba los archivos locales antes de decidir si necesitas crear una nueva.
+
+Si ya existe `alphavision-release.jks`, NO lo borres ni crees otra firma. Verifica
+el almacen existente con (ajusta la ruta si usas otro keytool):
+
+```powershell
+keytool -J-Duser.language=en -J-Duser.country=US -list -keystore "$env:USERPROFILE\AlphaVisionKeys\alphavision-release.jks" -alias alphavision
+```
+
+Te pedira la contrasena localmente. Si funciona y falta key.properties, completalo
+con los pasos manuales de esta guia, usando la MISMA clave/alias/contrasena.
+Si el archivo conservado tiene nombre `.nova-....jks`, verifica esa ruta primero;
+no lo reemplaces con una clave diferente sin saber si ya se uso.
+
+La version corregida conserva la clave en su ruta final antes de verificar y
+nunca elimina archivos de clave en la limpieza, incluso ante un error posterior.
+Solo elimina el archivo temporal de propiedades incompleto. La configuracion se
+escribe unicamente si la verificacion devuelve exito. No modifica el idioma global
+de Windows ni cambia automaticamente el formato del almacen.
+
+El arreglo y las reglas se comprobaron estaticamente; el JDK/Windows afectados
+no estan disponibles aqui para reproducir la ejecucion real.

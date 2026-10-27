@@ -25,3 +25,10 @@ assert '[Environment]::SetEnvironmentVariable($secretName, $null' in assistant
 assert 'ZeroFreeBSTR' in assistant
 assert '-storepass $password' not in assistant
 print('OK: setup assistant uses hidden prompts, env passwords, refusal/atomic moves and cleanup (static checks).')
+
+assert "'-J-Duser.language=en'" in assistant
+assert "'-J-Duser.country=US'" in assistant
+assert "@('-list', '-v'" not in assistant
+assert assistant.index('[IO.File]::Move($tempKey, $KeystorePath)') < assistant.index("@('-list', '-keystore'")
+assert '@($tempKey, $tempProperties)' not in assistant
+print('OK: English Java locale, non-verbose verification, generated private keys retained on failures.')

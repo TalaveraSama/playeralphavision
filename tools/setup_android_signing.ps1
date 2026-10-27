@@ -30,7 +30,12 @@ function Invoke-KeytoolChecked([string]$Tool, [string[]]$ToolArguments) {
   try {
     # keytool normally prints certificate information and warnings on stderr.
     $ErrorActionPreference = 'Continue'
-    & $Tool @ToolArguments 2>&1 | ForEach-Object { Write-Host ($_.ToString()) }
+    # Work around JDK localized certificate formatting errors (es locale).
+    $javaLocale = @('-J-Duser.language=en', '-J-Duser.country=US')
+    & $Tool @javaLocale @ToolArguments 2>&1 | ForEach-Object {
+      $message = if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_.ToString() }
+      if ($message -and $message -ne 'System.Management.Automation.RemoteException') { Write-Host $message }
+    }
     return $LASTEXITCODE
   } finally { $ErrorActionPreference = $previous }
 }
@@ -88,15 +93,17 @@ try {
   [Environment]::SetEnvironmentVariable($secretName, $password, 'Process')
   $code = Invoke-KeytoolChecked -Tool $keytool -ToolArguments @('-genkeypair', '-v', '-keystore', $tempKey, '-storetype', 'JKS', '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000', '-alias', $KeyAlias, '-dname', 'CN=Alpha Vision Android Release', '-storepass:env', $secretName, '-keypass:env', $secretName)
   if ($code -ne 0 -or -not (Test-Path -LiteralPath $tempKey)) { throw 'keytool no pudo crear la clave. No se escribio key.properties.' }
-  $code = Invoke-KeytoolChecked -Tool $keytool -ToolArguments @('-list', '-v', '-keystore', $tempKey, '-alias', $KeyAlias, '-storepass:env', $secretName)
-  if ($code -ne 0) { throw 'No se pudo verificar el almacen generado.' }
+  # Preserve the generated private key BEFORE any certificate-display check.
+  # File.Move never overwrites an existing destination.
+  [IO.File]::Move($tempKey, $KeystorePath)
+  $tempKey = $null
+  # No verbose X509/date formatting: only verify the store and requested alias.
+  $code = Invoke-KeytoolChecked -Tool $keytool -ToolArguments @('-list', '-keystore', $KeystorePath, '-alias', $KeyAlias, '-storepass:env', $secretName)
+  if ($code -ne 0) { throw 'No se pudo verificar el almacen. La clave se conservo en la ruta final; no la borres. Consulta la guia para completar key.properties.' }
 
   $text = "storeFile=$(Escape-Property ($KeystorePath.Replace('\', '/')))`r`nstorePassword=$(Escape-Property $password)`r`nkeyAlias=$(Escape-Property $KeyAlias)`r`nkeyPassword=$(Escape-Property $password)`r`n"
   [IO.File]::WriteAllText($tempProperties, $text, (New-Object Text.UTF8Encoding($false)))
   $text = $null
-  # File.Move fails if the destination appeared meanwhile: never overwrite a key.
-  [IO.File]::Move($tempKey, $KeystorePath)
-  $tempKey = $null
   [IO.File]::Move($tempProperties, $propertiesPath)
   $tempProperties = $null
   Write-Host ''
@@ -114,8 +121,12 @@ try {
   $exitCode = 1
 } finally {
   [Environment]::SetEnvironmentVariable($secretName, $null, 'Process')
-  foreach ($path in @($tempKey, $tempProperties)) {
-    if ($path -and (Test-Path -LiteralPath $path)) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
+  # Never delete a private-key file, even if keytool failed after writing one.
+  if ($tempKey -and (Test-Path -LiteralPath $tempKey)) {
+    Write-Host "Archivo de clave temporal conservado para revision: $tempKey" -ForegroundColor Yellow
+  }
+  if ($tempProperties -and (Test-Path -LiteralPath $tempProperties)) {
+    Remove-Item -LiteralPath $tempProperties -Force -ErrorAction SilentlyContinue
   }
   $password = $null; $confirm = $null
 }
