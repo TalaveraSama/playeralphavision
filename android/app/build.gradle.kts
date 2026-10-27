@@ -1,7 +1,34 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Local-only credentials. Never fall back to a debug signature for production.
+val releasePropertiesFile = rootProject.file("key.properties")
+val releaseProperties = Properties()
+if (releasePropertiesFile.isFile) {
+    releasePropertiesFile.reader(Charsets.UTF_8).use { releaseProperties.load(it) }
+}
+val requiredSigningKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+val missingSigningKeys = requiredSigningKeys.filter { releaseProperties.getProperty(it).isNullOrBlank() }
+val releaseKeystore = releaseProperties.getProperty("storeFile")
+    ?.takeIf { it.isNotBlank() }?.let { rootProject.file(it) }
+val releaseSigningReady = releasePropertiesFile.isFile && missingSigningKeys.isEmpty() &&
+    releaseKeystore?.isFile == true
+
+// Covers both Flutter's assembleRelease/bundleRelease and aggregate Gradle tasks.
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.project == project && it.name.contains("release", ignoreCase = true) } &&
+        !releaseSigningReady) {
+        throw GradleException(
+            "Production signing is not configured. Create android/key.properties and a valid " +
+                "keystore using GUIA_FIRMA_ANDROID.md. Release builds NEVER use the debug key. " +
+                "Do not share or commit signing passwords."
+        )
+    }
 }
 
 android {
@@ -32,11 +59,23 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("production") {
+                storeFile = releaseKeystore
+                storePassword = releaseProperties.getProperty("storePassword")
+                keyAlias = releaseProperties.getProperty("keyAlias")
+                keyPassword = releaseProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Missing credentials are rejected before any release task executes.
+            if (releaseSigningReady) {
+                signingConfig = signingConfigs.getByName("production")
+            }
         }
     }
 }
