@@ -282,8 +282,9 @@ class _NovaShellState extends State<NovaShell> {
   Widget _buildRail(List<_NovaTab> tabs, int index) {
     final NovaTokens tokens = NovaTokens.of(context);
     final bool nova3 = context.watch<ConfigController>().theme.isNova3;
+    final double density = nova3 ? 0.8 : 1;
     return Container(
-      width: nova3 ? (MediaQuery.sizeOf(context).height < 500 ? 148 : 196) : 184,
+      width: nova3 ? (MediaQuery.sizeOf(context).height < 500 ? 148 : 196) * density : 184,
       decoration: BoxDecoration(
         color: tokens.surface,
         border: Border(right: BorderSide(color: nova3 ? Colors.transparent : tokens.hairline)),
@@ -291,14 +292,14 @@ class _NovaShellState extends State<NovaShell> {
       child: SafeArea(
         child: FocusTraversalGroup(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 24, 12, 20),
+            padding: EdgeInsets.fromLTRB(12 * density, 24 * density, 12 * density, 20 * density),
             children: <Widget>[
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 24),
+                padding: EdgeInsets.fromLTRB(10 * density, 0, 10 * density, 24 * density),
                 child: FittedBox(
                   alignment: Alignment.centerLeft,
                   fit: BoxFit.scaleDown,
-                  child: NovaLogo(fontSize: 20, color: nova3 ? Colors.white : null),
+                  child: NovaLogo(fontSize: 20 * density, color: nova3 ? Colors.white : null),
                 ),
               ),
               for (final int i in <int>[
@@ -308,7 +309,7 @@ class _NovaShellState extends State<NovaShell> {
                   if (!(nova3 && tabs[j].label == 'TV')) j,
               ])
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: EdgeInsets.only(bottom: 6 * density),
                   child: NovaFocusable(
                     autofocus: i == 0,
                     onTap: () {
@@ -316,8 +317,8 @@ class _NovaShellState extends State<NovaShell> {
                       if (nova3) _nova3Frame.currentState?.collapse();
                     },
                     child: Container(
-                      constraints: BoxConstraints(minHeight: nova3 && MediaQuery.sizeOf(context).height < 500 ? 44 : 50),
-                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: nova3 ? 7 : 12),
+                      constraints: BoxConstraints(minHeight: (nova3 && MediaQuery.sizeOf(context).height < 500 ? 44 : 50) * density),
+                      padding: EdgeInsets.symmetric(horizontal: 10 * density, vertical: (nova3 ? 7 : 12) * density),
                       decoration: BoxDecoration(
                         color: i == index
                             ? tokens.accent.withValues(alpha: nova3 ? 0.05 : 0.14)
@@ -326,11 +327,14 @@ class _NovaShellState extends State<NovaShell> {
                       ),
                       child: Row(children: <Widget>[
                         Icon(i == index ? tabs[i].selectedIcon : tabs[i].icon,
-                            size: 22, color: i == index ? tokens.accent : tokens.muted),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(nova3 ? tabs[i].label.toUpperCase() : tabs[i].label,
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-                                color: i == index ? tokens.text : tokens.muted))),
+                            size: 22 * density, color: i == index ? tokens.accent : tokens.muted),
+                        SizedBox(width: 12 * density),
+                        Expanded(child: FittedBox(
+                          fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
+                          child: Text(nova3 ? tabs[i].label.toUpperCase() : tabs[i].label,
+                            maxLines: 1, softWrap: false,
+                            style: TextStyle(fontSize: 14 * density, fontWeight: FontWeight.w600,
+                                color: i == index ? tokens.text : tokens.muted)))),
                       ]),
                     ),
                   ),

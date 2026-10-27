@@ -355,3 +355,17 @@ propio en este repositorio: estos cambios no lo convierten en una app Roku.
 Validación pendiente en SDK: `flutter analyze`, `flutter test`, en especial
 `test/nova3_frame_test.dart`, y APK en teléfono y TV. Las validaciones de sintaxis
 no reemplazan la compilación ni verifican el funcionamiento real de Media3.
+
+
+### Nova3 1.2.40 — TV y lateral un 20 % más compactos
+
+- Lateral Nova3: ancho 80 % del anterior, logo/iconos/texto/espaciado al 80 %;
+  los rótulos tienen una sola línea y ajuste al ancho (sin partir «Destacados»).
+- Cabecera global Nova3: iconos y reloj reducidos; menos espacio vertical.
+- TV Nova3: título, contador, filtros y rejilla al 80 % de sus medidas base;
+  padding superior de la cabecera baja de 22 a 8 dp y se elimina la búsqueda
+  duplicada (ya está en la cabecera global). Se mantiene Actualizar.
+- El tamaño de las tarjetas de Películas/Series y otros temas no se modifica.
+- La densidad `MediaGrid.density` es 1 por defecto y 0.8 solo para TV Nova3.
+- Pruebas añadidas: `flutter test test/nova3_compact_test.dart`. Compilación y
+  validación en TV/teléfono pendientes de ejecutar con Flutter instalado.

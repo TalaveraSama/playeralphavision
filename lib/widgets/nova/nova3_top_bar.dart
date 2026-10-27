@@ -41,8 +41,8 @@ class _Nova3TopBarState extends State<Nova3TopBar> {
     message: label,
     child: Semantics(label: label, button: true,
       child: NovaFocusable(onTap: onTap, child: SizedBox(
-        width: 48, height: 48,
-        child: Icon(icon, size: 24, color: NovaTokens.of(context).muted),
+        width: 40, height: 40,
+        child: Icon(icon, size: 19.2, color: NovaTokens.of(context).muted),
       )),
     ),
   );
@@ -50,7 +50,7 @@ class _Nova3TopBarState extends State<Nova3TopBar> {
   Widget build(BuildContext context) {
     final String time = '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(3.2, 6.4, 9.6, 6.4),
       child: Align(alignment: Alignment.centerRight,
         child: SingleChildScrollView(scrollDirection: Axis.horizontal, reverse: true,
           child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
@@ -63,7 +63,7 @@ class _Nova3TopBarState extends State<Nova3TopBar> {
             const SizedBox(width: 12),
             Container(width: 1, height: 22, color: Colors.white24),
             const SizedBox(width: 12),
-            Text(time, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w400, color: Colors.white70)),
+            Text(time, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: Colors.white70)),
           ]),
         ),
       ),

@@ -20,6 +20,7 @@ class MediaTile extends StatefulWidget {
     this.onLongPress,
     this.isFavorite = false,
     this.radius = 12,
+    this.density = 1,
   });
 
   final MediaItem item;
@@ -28,6 +29,7 @@ class MediaTile extends StatefulWidget {
   final VoidCallback? onLongPress;
   final bool isFavorite;
   final double radius;
+  final double density;
 
   @override
   State<MediaTile> createState() => _MediaTileState();
@@ -201,6 +203,7 @@ class _MediaTileState extends State<MediaTile> {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
+                    fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) * widget.density,
                     height: 1.15,
                   ),
                 ),
@@ -224,6 +227,7 @@ class MediaGrid extends StatelessWidget {
     this.favoriteKeys,
     this.maxCrossAxisExtent = 132,
     this.childAspectRatio = 0.68,
+    this.density = 1,
   });
 
   final List<MediaItem> items;
@@ -233,23 +237,25 @@ class MediaGrid extends StatelessWidget {
   final Set<String>? favoriteKeys;
   final double maxCrossAxisExtent;
   final double childAspectRatio;
+  final double density;
 
   @override
   Widget build(BuildContext context) {
     final double scale = NovaMetrics.of(context).scale;
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12 * density, 8 * density, 12 * density, 24 * density),
       gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: maxCrossAxisExtent * scale,
+        maxCrossAxisExtent: maxCrossAxisExtent * scale * density,
         childAspectRatio: childAspectRatio,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 12,
+        mainAxisSpacing: 14 * density,
+        crossAxisSpacing: 12 * density,
       ),
       itemCount: items.length,
       itemBuilder: (BuildContext context, int index) {
         final MediaItem item = items[index];
         return MediaTile(
           item: item,
+          density: density,
           iconUrl: iconUrlBuilder?.call(item),
           isFavorite: favoriteKeys?.contains(item.favoriteKey) ?? false,
           onTap: () => onTap(item, index),

@@ -333,6 +333,9 @@ class _CatalogPageState extends State<CatalogPage>
     );
   }
 
+  bool get _compactLive => widget.kind == MediaKind.live &&
+      context.read<ConfigController>().theme.isNova3;
+
   Widget _buildGridScaffold(
     ConfigController configController,
     Set<String> favoriteKeys,
@@ -400,7 +403,9 @@ class _CatalogPageState extends State<CatalogPage>
     bool canSearch,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 22, 20, 10),
+      padding: _compactLive
+          ? const EdgeInsets.fromLTRB(22.4, 8, 16, 8)
+          : const EdgeInsets.fromLTRB(28, 22, 20, 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
@@ -411,17 +416,19 @@ class _CatalogPageState extends State<CatalogPage>
                 Text(
                   widget.kind.label,
                   style: theme.textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                      ?.copyWith(fontWeight: FontWeight.w800,
+                        fontSize: _compactLive ? (theme.textTheme.headlineSmall?.fontSize ?? 24) * 0.8 : null),
                 ),
                 if (countLabel != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text(countLabel, style: theme.textTheme.bodySmall),
+                    child: Text(countLabel, style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: _compactLive ? (theme.textTheme.bodySmall?.fontSize ?? 12) * 0.8 : null)),
                   ),
               ],
             ),
           ),
-          if (canSearch)
+          if (canSearch && !_compactLive)
             IconButton(
               tooltip: 'Buscar',
               onPressed: _openSearch,
@@ -430,6 +437,7 @@ class _CatalogPageState extends State<CatalogPage>
           IconButton(
             tooltip: 'Actualizar',
             onPressed: () => _loadAll(force: true),
+            iconSize: _compactLive ? 19.2 : 24,
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -489,16 +497,19 @@ class _CatalogPageState extends State<CatalogPage>
 
   Widget _buildCategoryBar() {
     return SizedBox(
-      height: 48,
+      height: _compactLive ? 40 : 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: widget.embedded ? 28 : 12),
+        padding: EdgeInsets.symmetric(horizontal: widget.embedded ? (_compactLive ? 22.4 : 28) : 12),
         itemCount: _categories.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (BuildContext context, int index) {
           if (index == 0) {
             return ChoiceChip(
               label: const Text('Todas'),
+              visualDensity: _compactLive ? VisualDensity.compact : null,
+              labelStyle: _compactLive ? const TextStyle(fontSize: 11.2) : null,
+              padding: _compactLive ? const EdgeInsets.symmetric(horizontal: 6.4) : null,
               selected: _categoryId == null,
               onSelected: (_) => _selectCategory(null),
             );
@@ -506,6 +517,9 @@ class _CatalogPageState extends State<CatalogPage>
           final XtreamCategory category = _categories[index - 1];
           return ChoiceChip(
             label: Text(category.name),
+            visualDensity: _compactLive ? VisualDensity.compact : null,
+            labelStyle: _compactLive ? const TextStyle(fontSize: 11.2) : null,
+            padding: _compactLive ? const EdgeInsets.symmetric(horizontal: 6.4) : null,
             selected: _categoryId == category.id,
             onSelected: (_) => _selectCategory(category.id),
           );
@@ -529,6 +543,7 @@ class _CatalogPageState extends State<CatalogPage>
     final AppState app = context.read<AppState>();
     return MediaGrid(
       items: _items,
+      density: _compactLive ? 0.8 : 1,
       favoriteKeys: favoriteKeys,
       iconUrlBuilder: app.iconUrl,
       onTap: _openItem,
