@@ -9,6 +9,7 @@ import 'app.dart';
 import 'core/config/config_controller.dart';
 import 'core/state/app_state.dart';
 import 'core/storage/prefs_store.dart';
+import 'core/utils/device_profile.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,9 @@ Future<void> main() async {
 
   // Configuración de marca: asset del APK + caché local (rápido).
   await config.load();
+  // Detectar Fire TV/Leanback antes del primer diseño, incluso si el sistema
+  // no anuncia NavigationMode.directional.
+  await DeviceProfile.load();
 
   runApp(XtreamPlayerApp(appState: appState, config: config));
 

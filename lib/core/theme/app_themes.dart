@@ -19,13 +19,15 @@ ThemeData buildThemeData(ThemeSpec spec) {
   final Color surface = spec.surfaceColor;
   // En los temas con botones claros (estilo HBO Max) el CTA es blanco.
   final Color ctaBackground = spec.lightButtons ? Colors.white : spec.primaryColor;
-  final Color ctaForeground = spec.lightButtons ? Colors.black : Colors.white;
+  final Color ctaForeground = ctaBackground.computeLuminance() > 0.45
+      ? Colors.black : Colors.white;
 
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: background,
-    splashFactory: InkSparkle.splashFactory,
+    splashFactory: InkRipple.splashFactory,
+    visualDensity: VisualDensity.standard,
     appBarTheme: AppBarTheme(
       backgroundColor: background,
       foregroundColor: spec.textColor,
@@ -52,6 +54,7 @@ ThemeData buildThemeData(ThemeSpec spec) {
       fillColor: isDark
           ? Colors.white.withValues(alpha: 0.06)
           : Colors.black.withValues(alpha: 0.04),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       hintStyle: TextStyle(color: spec.textColor.withValues(alpha: 0.45)),
       labelStyle: TextStyle(color: spec.textColor.withValues(alpha: 0.75)),
       border: OutlineInputBorder(
@@ -69,6 +72,7 @@ ThemeData buildThemeData(ThemeSpec spec) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
+        minimumSize: const Size(48, 48),
         backgroundColor: ctaBackground,
         foregroundColor: ctaForeground,
         shape: RoundedRectangleBorder(
@@ -80,6 +84,7 @@ ThemeData buildThemeData(ThemeSpec spec) {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
+        minimumSize: const Size(48, 48),
         foregroundColor: spec.textColor,
         side: BorderSide(color: spec.textColor.withValues(alpha: 0.5)),
         shape: RoundedRectangleBorder(

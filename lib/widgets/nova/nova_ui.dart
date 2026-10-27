@@ -134,7 +134,15 @@ class _NovaFocusableState extends State<NovaFocusable> {
   Widget build(BuildContext context) {
     return Focus(
       focusNode: _node, autofocus: widget.autofocus, canRequestFocus: widget.onTap != null,
-      onFocusChange: (bool v) => setState(() => _focused = v), onKeyEvent: _onKey,
+      onFocusChange: (bool v) {
+        setState(() => _focused = v);
+        if (v) {
+          Scrollable.ensureVisible(context,
+              alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero : const Duration(milliseconds: 180));
+        }
+      }, onKeyEvent: _onKey,
       // TOUCH: en telefonos/tablets el toque debe activar igual que OK del mando.
       child: MouseRegion(
         cursor: widget.onTap != null
@@ -164,9 +172,9 @@ class _NovaFocusableState extends State<NovaFocusable> {
                     // y no coincidia con el color de la marca).
                     color: NovaTokens.of(context)
                         .accent
-                        .withValues(alpha: 0.85),
-                    blurRadius: 20,
-                    spreadRadius: 2,
+                        .withValues(alpha: 0.22),
+                    blurRadius: 12,
+                    spreadRadius: 0,
                   ),
                 ]
               : null,
@@ -203,7 +211,7 @@ class NovaPrimaryButton extends StatelessWidget {
       onTap: onPressed,
       borderRadius: BorderRadius.circular(10),
       autofocus: autofocus,
-      child: Material(
+      child: ExcludeFocus(child: Material(
         color: enabled ? tokens.accent : tokens.accent.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
@@ -233,7 +241,7 @@ class NovaPrimaryButton extends StatelessWidget {
           ),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -262,7 +270,7 @@ class NovaSquareButton extends StatelessWidget {
     final Widget button = NovaFocusable(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(10),
-      child: Material(
+      child: ExcludeFocus(child: Material(
         color: selected
             ? tokens.accent.withValues(alpha: 0.18)
             : tokens.surfaceHigh,
@@ -287,7 +295,7 @@ class NovaSquareButton extends StatelessWidget {
           ),
           ),
         ),
-      ),
+      )),
     );
 
     final String? text = tooltip;
@@ -339,7 +347,7 @@ class NovaSectionHeader extends StatelessWidget {
               style: TextButton.styleFrom(
                 foregroundColor: tokens.link.color,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: Size.zero,
+                minimumSize: const Size(48, 48),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(action, style: tokens.link),
@@ -414,7 +422,7 @@ class NovaFilterBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                   child: Container(
                     padding:
-                        EdgeInsets.symmetric(horizontal: 15 * tokens.scale, vertical: 8 * tokens.scale),
+                        EdgeInsets.symmetric(horizontal: 15 * tokens.scale, vertical: 13 * tokens.scale),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(

@@ -201,3 +201,33 @@ Cada tab es un `_NovaTab(label:, icon:, selectedIcon:, builder:)`.
 | **Filas de tarjetas** | `_PosterRow` | `_buildCompact` / `_buildWide` |
 
 Con esos tres widgets y el orden de los bloques, puedes rearmar la portada como quieras.
+
+## Revisión adaptativa (octubre de 2026)
+
+- **Android TV y Fire TV:** menú lateral desplazable en todas las resoluciones,
+  detección Leanback/AFT antes del primer diseño, destinos con foco explícito y
+  accesos a búsqueda/perfil. Se mantiene Atrás para volver a Inicio.
+- **Teléfono:** navegación Material con indicador suave y SafeArea inferior;
+  controles principales de al menos 48 dp y categorías más cómodas.
+- **Portada:** tarjetas editoriales más grandes, títulos con más jerarquía,
+  espaciado de 20/32 dp. El carrusel conserva el orden y no avanza solo en TV,
+  con movimiento reducido o cuando la pestaña está inactiva.
+- **Marca blanca:** se conservan los colores y logos configurados por el panel.
+  No se modifican reproductores ni protocolos IPTV.
+- **Roku:** no ejecuta APK ni Flutter. Este repo no incluye un cliente Roku;
+  requiere un proyecto SceneGraph/BrightScript separado y verificar formatos,
+  autenticación y reproducción en equipos reales. Estas mejoras no crean ese cliente.
+
+Validación local con Flutter instalado:
+
+```sh
+flutter pub get
+flutter analyze
+flutter test test/nova_design_test.dart
+flutter test
+```
+
+Probar además en teléfono 360/390 dp y TV 960×540 / 1280×720: recorrer destinos
+con flechas, OK y Atrás, comprobar foco visible, desplazamiento del menú,
+orientación, texto aumentado y reproducción. La compatibilidad real de Fire TV
+requiere instalar el APK en el dispositivo; no se deduce solo del diseño.

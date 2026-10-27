@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/device_profile.dart';
+
 /// Puntos de corte del diseño NOVA.
 ///
 /// Por encima de [wide] la app usa la barra de navegación **superior** (web,
@@ -49,7 +51,8 @@ class NovaMetrics {
 
     // Flutter marca la navegación por mando como "direccional": es la señal
     // fiable de televisor, sin adivinar por el tamaño.
-    final bool tv = mq.navigationMode == NavigationMode.directional;
+    final bool tv = mq.navigationMode == NavigationMode.directional ||
+        (DeviceProfile.current?.isTv ?? false);
 
     final NovaSizeClass sizeClass;
     if (tv) {
@@ -66,12 +69,10 @@ class NovaMetrics {
       sizeClass = NovaSizeClass.wide;
     }
 
-    // Todas las clases usan la misma escala: el diseno se adapta por ancho,
-    // no se encoge por clase de dispositivo (evita pantallas "pequenas").
-    const double base = 1.0;
+    // Tipografía algo mayor para lectura a distancia, sin escalar toda la
+    // pantalla como si fuera un teléfono gigante.
+    final double base = tv ? (width >= 1400 ? 1.15 : 1.05) : 1.0;
 
-    // Diseno un 20 % mas compacto (peticion del cliente), con un minimo para
-    // que en moviles no quede ilegible.
     final double scale = (base * designScale).clamp(0.72, 1.2);
 
     return NovaMetrics(scale: scale, sizeClass: sizeClass, isTv: tv);
@@ -176,7 +177,7 @@ class NovaTokens {
   TextStyle get heroTitle => TextStyle(
         fontSize: 54 * scale,
         height: 1.02,
-        fontWeight: FontWeight.w900,
+        fontWeight: FontWeight.w800,
         letterSpacing: -0.6,
         color: text,
       );
@@ -184,7 +185,7 @@ class NovaTokens {
   TextStyle get heroTitleCompact => TextStyle(
         fontSize: 29 * scale,
         height: 1.05,
-        fontWeight: FontWeight.w900,
+        fontWeight: FontWeight.w800,
         letterSpacing: -0.4,
         color: text,
       );

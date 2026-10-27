@@ -79,7 +79,7 @@ class _NovaShellState extends State<NovaShell> {
     if (_sectionMenuOpen) return;
     _sectionMenuOpen = true;
     final AppConfig config = context.read<ConfigController>().config;
-    final bool wide =
+    final bool wide = NovaMetrics.of(context).isTv ||
         MediaQuery.sizeOf(context).width >= NovaBreakpoints.wide;
     final List<_NovaTab> tabs = wide
         ? _wideTabs(config.branding.showLiveSection)
@@ -117,11 +117,11 @@ class _NovaShellState extends State<NovaShell> {
     final AppConfig config = context.watch<ConfigController>().config;
     final bool showLive = config.branding.showLiveSection;
     final bool canSearch = config.features.search;
-    final bool wide = MediaQuery.sizeOf(context).width >= NovaBreakpoints.wide;
+    final bool wide = NovaMetrics.of(context).isTv ||
+        MediaQuery.sizeOf(context).width >= NovaBreakpoints.wide;
     // En televisores (mando) el menú va a la izquierda: se llega pulsando
     // "izquierda" sin tener que bajar toda la lista para dar con la barra.
-    final bool isTv =
-        MediaQuery.navigationModeOf(context) == NavigationMode.directional;
+    final bool isTv = NovaMetrics.of(context).isTv;
 
     final List<_NovaTab> tabs = wide
         ? _wideTabs(showLive)
@@ -134,7 +134,10 @@ class _NovaShellState extends State<NovaShell> {
       children: List<Widget>.generate(
         tabs.length,
         (int position) => _visited.contains(position)
-            ? tabs[position].builder(context)
+            ? TickerMode(
+                enabled: position == index,
+                child: tabs[position].builder(context),
+              )
             : const SizedBox.shrink(),
       ),
     );
@@ -163,7 +166,7 @@ class _NovaShellState extends State<NovaShell> {
           ),
         );
       },
-      child: wide
+      child: wide && !isTv
           ? Scaffold(
               body: Column(
                 children: <Widget>[
@@ -196,67 +199,89 @@ class _NovaShellState extends State<NovaShell> {
 
   Widget _buildBottomBar(List<_NovaTab> tabs, int index) {
     final NovaTokens tokens = NovaTokens.of(context);
-    // Barra propia con NovaFocusable: el foco se ve SIEMPRE (borde blanco +
-    // halo cian), a diferencia del NavigationBar de Material.
-    return Container(
-      height: 64,
-      color: tokens.surface,
-      child: Row(
-        children: <Widget>[
-          for (int i = 0; i < tabs.length; i++)
-            Expanded(
-              child: NovaFocusable(
-                onTap: () => _select(i),
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 3, vertical: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Icon(
-                        i == index ? tabs[i].selectedIcon : tabs[i].icon,
-                        color: i == index ? tokens.accent : Colors.white70,
-                        size: 21,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        tabs[i].label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: i == index ? tokens.accent : Colors.white60,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        border: Border(top: BorderSide(color: tokens.hairline)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: NavigationBar(
+          height: 76,
+          backgroundColor: Colors.transparent,
+          selectedIndex: index,
+          onDestinationSelected: _select,
+          indicatorColor: tokens.accent.withValues(alpha: 0.16),
+          destinations: <NavigationDestination>[
+            for (final _NovaTab tab in tabs)
+              NavigationDestination(
+                icon: Icon(tab.icon, size: 23),
+                selectedIcon: Icon(tab.selectedIcon, color: tokens.accent),
+                label: tab.label,
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  /// Menú lateral para TV: siempre a la vista (pulsando "izquierda" del mando).
+  /// Destinos grandes, desplazables y con foco explícito para el mando.
   Widget _buildRail(List<_NovaTab> tabs, int index) {
-    return NavigationRail(
-      selectedIndex: index,
-      onDestinationSelected: _select,
-      labelType: NavigationRailLabelType.all,
-      minWidth: 128,
-      groupAlignment: -0.9,
-      backgroundColor: Colors.black,
-      destinations: <NavigationRailDestination>[
-        for (final _NovaTab tab in tabs)
-          NavigationRailDestination(
-            icon: Icon(tab.icon),
-            selectedIcon: Icon(tab.selectedIcon),
-            label: Text(tab.label),
+    final NovaTokens tokens = NovaTokens.of(context);
+    return Container(
+      width: 184,
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        border: Border(right: BorderSide(color: tokens.hairline)),
+      ),
+      child: SafeArea(
+        child: FocusTraversalGroup(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 24, 12, 20),
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(10, 0, 10, 24),
+                child: FittedBox(
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.scaleDown,
+                  child: NovaLogo(fontSize: 20),
+                ),
+              ),
+              for (int i = 0; i < tabs.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: NovaFocusable(
+                    autofocus: i == 0,
+                    onTap: () => _select(i),
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 50),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: i == index
+                            ? tokens.accent.withValues(alpha: 0.14)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(children: <Widget>[
+                        Icon(i == index ? tabs[i].selectedIcon : tabs[i].icon,
+                            size: 22, color: i == index ? tokens.accent : tokens.muted),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(tabs[i].label,
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                                color: i == index ? tokens.text : tokens.muted))),
+                      ]),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              if (context.read<ConfigController>().config.features.search)
+                NovaSquareButton(icon: Icons.search, tooltip: 'Buscar', onPressed: _openSearch),
+              const SizedBox(height: 10),
+              NovaSquareButton(icon: Icons.person_outline, tooltip: 'Perfil y ajustes', onPressed: _openProfile),
+            ],
           ),
-      ],
+        ),
+      ),
     );
   }
 
@@ -455,8 +480,8 @@ class _NovaTopBar extends StatelessWidget {
                 onTap: onSearch,
                 customBorder: const CircleBorder(),
                 child: SizedBox(
-                  width: 34,
-                  height: 34,
+                  width: 48,
+                  height: 48,
                   child: Icon(
                     Icons.search,
                     size: 17,
@@ -473,8 +498,8 @@ class _NovaTopBar extends StatelessWidget {
               onTap: onProfile,
               borderRadius: BorderRadius.circular(10),
               child: Container(
-                width: 32,
-                height: 32,
+                width: 48,
+                height: 48,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: tokens.surfaceHigh,

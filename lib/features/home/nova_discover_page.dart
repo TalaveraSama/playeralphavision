@@ -378,9 +378,9 @@ class _NovaDiscoverPageState extends State<NovaDiscoverPage> {
 
   @override
   Widget build(BuildContext context) {
-    final AppState app = context.watch<AppState>();
-    final bool wide = MediaQuery.sizeOf(context).width >= NovaBreakpoints.wide;
-    final EdgeInsets padding = EdgeInsets.symmetric(horizontal: wide ? 26 : 16);
+    final bool wide = NovaMetrics.of(context).isTv ||
+        MediaQuery.sizeOf(context).width >= NovaBreakpoints.wide;
+    final EdgeInsets padding = EdgeInsets.symmetric(horizontal: wide ? 32 : 20);
 
     if (_loading) {
       return const LoadingView(message: 'Cargando la portada…');
@@ -1369,7 +1369,7 @@ class _NovaWebPage extends StatelessWidget {
 }
 
 // ---------------------------------------------------- carrusel grande (auto)
-/// Carrusel de tarjetas grandes que avanza solo cada 3 segundos.
+/// Carrusel editorial; sin avance automático con mando o movimiento reducido.
 
 
 
@@ -1394,10 +1394,13 @@ class _BigCarouselState extends State<_BigCarousel> {
   void initState() {
     super.initState();
     // Orden aleatorio de las ultimas agregadas.
-    _items = List<MediaItem>.of(widget.items)..shuffle(Random());
+    _items = List<MediaItem>.of(widget.items);
     // Avance automatico: estilo carrusel, una ficha cada 5 s.
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted || _items.length < 2) return;
+      if (!mounted || _items.length < 2 ||
+          NovaMetrics.of(context).isTv ||
+          MediaQuery.disableAnimationsOf(context) ||
+          !TickerMode.of(context)) return;
       _page = (_page + 1) % _items.length;
       try {
         _controller.animateToItem(
@@ -1407,6 +1410,17 @@ class _BigCarouselState extends State<_BigCarousel> {
         );
       } catch (_) {}
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _BigCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Mantener el orden mientras se navega; actualizar al cambiar el catálogo.
+    if (oldWidget.items.map((e) => e.favoriteKey).join('|') !=
+        widget.items.map((e) => e.favoriteKey).join('|')) {
+      _items = List<MediaItem>.of(widget.items);
+      _page = 0;
+    }
   }
 
   @override
@@ -1438,8 +1452,10 @@ class _BigCarouselState extends State<_BigCarousel> {
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
     final Size screen = MediaQuery.sizeOf(context);
-    final double h = (screen.height * 0.34).clamp(150.0, 330.0);
-    final double w = h * 16 / 9;
+    final bool tv = NovaMetrics.of(context).isTv;
+    final double h = (screen.height * (tv ? 0.48 : 0.36))
+        .clamp(tv ? 200.0 : 180.0, 400.0);
+    final double w = tv ? h * 16 / 9 : (screen.width - 48).clamp(240.0, 640.0);
     return SizedBox(
       height: h,
       child: CarouselView(
@@ -1482,9 +1498,9 @@ class _BigCarouselState extends State<_BigCarousel> {
                           ),
                         ),
                         Positioned(
-                          left: 16,
-                          right: 16,
-                          bottom: 12,
+                          left: 24,
+                          right: 24,
+                          bottom: 24,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
@@ -1493,10 +1509,10 @@ class _BigCarouselState extends State<_BigCarousel> {
                                 cleanMediaName(item.name),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
+                                  fontSize: tv ? 30 : 23,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -1538,7 +1554,7 @@ class _CategoryTiles extends StatelessWidget {
   Widget build(BuildContext context) {
     if (categories.isEmpty) return const SizedBox.shrink();
     return SizedBox(
-      height: 46,
+      height: 60,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: padding,
@@ -1553,7 +1569,7 @@ class _CategoryTiles extends StatelessWidget {
               width: 132,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E2432),
+                color: NovaTokens.of(context).surfaceHigh,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.white12),
               ),
@@ -1566,8 +1582,8 @@ class _CategoryTiles extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
-                  fontSize: 11,
-                  letterSpacing: 1.2,
+                  fontSize: 12,
+                  letterSpacing: 0.6,
                 ),
               ),
             ),
