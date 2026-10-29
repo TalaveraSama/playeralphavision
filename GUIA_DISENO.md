@@ -449,3 +449,13 @@ pendientes de validar con el SDK instalado.
   player iPhone; formatos dependen de codecs Android disponibles.
 - Instalación en carpeta nueva y advertencias: `EXOPLAYER_UNICO.md`.
 - Sintaxis/regresiones estáticas pasadas. Build/Flutter tests/dispositivos pendientes.
+
+
+### 1.2.46 — TV a pantalla completa, lista y controles superpuestos
+
+- Quitadas las columnas/filas que encogían el vídeo en Nova3 TV.
+- Vídeo con las mismas restricciones a pantalla completa y con lista visible.
+- Inicio sin lista; toque/OK/flechas muestran UI, inactividad de 4 s la oculta.
+- ExoPlayer, firma y preferencias de subtítulos se conservan.
+- Guía: PLAYER_PANTALLA_COMPLETA.md; pruebas: nova3_live_overlay_test.dart.
+  Sintaxis comprobada; SDK/build y verificación en TV real pendientes.

@@ -55,7 +55,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   Timer? _watchdog;
   Timer? _hideTimer;
   bool _showBar = true;
-  bool _nova3Fullscreen = false;
+  bool _nova3Fullscreen = true;
   bool _buffering = true;
   double? _networkSample;
   bool get _nova3Live => _current.isLive &&
@@ -325,21 +325,27 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   void _wakeControls() {
     _lastBack = null;
-    if (mounted) setState(() => _showBar = true);
+    if (mounted) setState(() {
+      _showBar = true;
+      if (_nova3Live) _nova3Fullscreen = false;
+    });
     _scheduleHide();
   }
 
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted) setState(() => _showBar = false);
+      if (mounted) setState(() {
+        _showBar = false;
+        if (_nova3Live) _nova3Fullscreen = true;
+      });
     });
   }
 
   void _onBackPressed() {
     if (_nova3Live) {
       if (_nova3Fullscreen) {
-        setState(() => _nova3Fullscreen = false);
+        _wakeControls();
       } else {
         Navigator.of(context).pop();
       }
@@ -506,7 +512,11 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       // En el marco Nova3, OK y flechas pertenecen al foco de la lista.
       if (_nova3Live && (k == LogicalKeyboardKey.select || k == LogicalKeyboardKey.enter ||
           k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowRight ||
-          k == LogicalKeyboardKey.arrowUp || k == LogicalKeyboardKey.arrowDown)) return false;
+          k == LogicalKeyboardKey.arrowUp || k == LogicalKeyboardKey.arrowDown)) {
+        if (_nova3Fullscreen) { _wakeControls(); return true; }
+        _scheduleHide();
+        return false;
+      }
       // Direccionales: navegan por los botones (no hacen seek).
       if (_showBar &&
           (k == LogicalKeyboardKey.arrowLeft ||
@@ -574,21 +584,28 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       return PopScope(
         canPop: !_nova3Fullscreen,
         onPopInvokedWithResult: (didPop, result) {
-          if (!didPop) setState(() => _nova3Fullscreen = false);
+          if (!didPop) _wakeControls();
         },
         child: Scaffold(backgroundColor: Colors.black, body: Nova3LiveLayout(
           playlist: widget.playlist,
           index: _index,
           fullscreen: _nova3Fullscreen,
           onBack: () => Navigator.of(context).pop(),
-          onFullscreen: () => setState(() => _nova3Fullscreen = !_nova3Fullscreen),
+          onFullscreen: () {
+            if (_nova3Fullscreen) {
+              _wakeControls();
+            } else {
+              _hideTimer?.cancel();
+              setState(() { _nova3Fullscreen = true; _showBar = false; });
+            }
+          },
           onSelect: (index) { if (index != _index) _playRelative(index - _index); },
           video: ColoredBox(color: Colors.black, child: _unavailable
               ? const Center(child: Text('Canal no disponible', style: TextStyle(color: Colors.white)))
               : _textureId == null
                   ? Nova3Loading(bytesPerSecond: _networkSample)
                   : Stack(fit: StackFit.expand, children: <Widget>[
-                      _videoWithSubtitles(bottomInset: _nova3Fullscreen ? 24 : 44),
+                      _videoWithSubtitles(bottomInset: _nova3Fullscreen ? 24 : 104),
                       if (_buffering) Nova3Loading(bytesPerSecond: _networkSample),
                     ])),
           controls: Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
