@@ -11,7 +11,6 @@ import '../models/stream_format.dart';
 import '../models/xtream_account.dart';
 import '../models/xtream_credentials.dart';
 import '../storage/prefs_store.dart';
-import '../utils/player_platform.dart';
 
 /// Estado global: sesión, cuenta, ajustes, favoritos e historial.
 class AppState extends ChangeNotifier {
@@ -43,15 +42,6 @@ class AppState extends ChangeNotifier {
   XtreamAccount? get account => _account;
   XtreamCredentials? get credentials => _credentials;
   StreamFormat get format => _format;
-
-  /// El motor compatible (libmpv) falló en este equipo: se usa el nativo.
-  bool get compatiblePlayerBroken => _store.compatiblePlayerBroken;
-
-  Future<void> markCompatiblePlayerBroken() async {
-    if (_store.compatiblePlayerBroken) return;
-    await _store.saveCompatiblePlayerBroken(true);
-    notifyListeners();
-  }
 
   /// Precarga (búfer) del directo, en MB.
   int get bufferMb => _store.bufferMb;
@@ -350,22 +340,6 @@ class AppState extends ChangeNotifier {
   Future<void> clearResume() async {
     _resume = <ResumeEntry>[];
     await _store.clearResumeList();
-    notifyListeners();
-  }
-
-  /// Decodificacion de video: 'software' (FFmpeg) o 'hardware' (MediaCodec).
-  String get videoDecoder => _store.videoDecoder;
-
-  Future<void> setVideoDecoder(String mode) async {
-    await _store.saveVideoDecoder(mode);
-    notifyListeners();
-  }
-
-  /// Motor del reproductor: 'exo', 'ijk' o 'mpv'.
-  String get playerEngine => playerEngineForPlatform(_store.playerEngine, defaultTargetPlatform);
-
-  Future<void> setPlayerEngine(String engine) async {
-    await _store.savePlayerEngine(engine);
     notifyListeners();
   }
 

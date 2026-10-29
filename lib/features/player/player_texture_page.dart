@@ -91,23 +91,28 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   Future<void> _createPlayer() async {
-    final String decMode = context.read<AppState>().videoDecoder;
     try {
       final Map<dynamic, dynamic>? res = await _host.invokeMethod<Map<dynamic, dynamic>>('create');
-      if (res == null) return;
+      if (res == null) throw StateError('ExoPlayer no devolvió una instancia');
+      if (!mounted) {
+        await _host.invokeMethod('release', <String, dynamic>{'id': res['id']});
+        return;
+      }
       final int id = (res['id'] as num).toInt();
       final int textureId = (res['textureId'] as num).toInt();
       _playerId = id;
       _channel = MethodChannel('media3_player_$id');
       _channel?.setMethodCallHandler(_onMethod);
-      await _channel?.invokeMethod('setDecoderMode', <String, dynamic>{
-        'mode': decMode,
-      });
       if (!mounted) return;
       setState(() => _textureId = textureId);
       await _load(_current);
     } catch (_) {
-      if (mounted) Navigator.of(context).pop('mpv');
+      if (mounted) {
+        setState(() { _unavailable = true; _buffering = false; });
+        _watchdog?.cancel();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No se pudo iniciar ExoPlayer. Vuelve a abrir el canal.')));
+      }
     }
   }
 
@@ -162,13 +167,6 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
         setState(() => _unavailable = false);
         if (widget.playlist.length > 1) {
           _playRelative(1);
-        } else if (context
-            .read<ConfigController>()
-            .config
-            .features
-            .vlcPlayer) {
-          // Segunda opcion disponible: se delega al motor libmpv.
-          Navigator.of(context).pop('mpv');
         } else {
           // NO expulsar de la app: se queda reintentando.
           setState(() => _unavailable = false);
@@ -228,7 +226,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     return 'Pista ${(t['index'] as num).toInt() + 1}';
   }
 
-  Future<void> _openTracks() async {
+  Future<void> _openTracks({bool subtitles = false}) async {
     _wakeControls();
     final Map<dynamic, dynamic>? res =
         await _channel?.invokeMethod<Map<dynamic, dynamic>>('getTracks');
@@ -239,7 +237,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     final bool textDisabled = (res['textDisabled'] as bool?) ?? false;
 
     final List<Widget> options = <Widget>[];
-    if (audio.isNotEmpty) {
+    if (!subtitles && audio.isNotEmpty) {
       options.add(const Padding(
         padding: EdgeInsets.fromLTRB(8, 8, 8, 4),
         child: Text('Audio', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -259,7 +257,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
         ));
       }
     }
-    if (text.isNotEmpty) {
+    if (subtitles && text.isNotEmpty) {
       options.add(const Padding(
         padding: EdgeInsets.fromLTRB(8, 12, 8, 4),
         child: Text('Subtítulos', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -289,11 +287,16 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       }
     }
 
-    if (options.isEmpty) return;
+    if (options.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(subtitles
+          ? 'Este contenido no ofrece pistas de subtítulos compatibles.'
+          : 'Este contenido no ofrece pistas de audio disponibles.')));
+      return;
+    }
     await showDialog<void>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('Audio y subtítulos'),
+        title: Text(subtitles ? 'Subtítulos' : 'Audio / idioma'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -593,7 +596,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
             _pbtn(_paused ? Icons.play_arrow : Icons.pause, _togglePlay),
             _pbtn(Icons.skip_next, () => _playRelative(1)),
             _pbtn(Icons.event_note_outlined, _showEpg),
-            _pbtn(Icons.subtitles, _openTracks),
+            _pbtn(Icons.audiotrack, _openTracks),
+            _pbtn(Icons.subtitles, () => _openTracks(subtitles: true)),
           ]),
         )),
       );
@@ -693,7 +697,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
                       ),
                       if (widget.playlist[_index].isLive)
                         _pbtn(Icons.event_note_outlined, _showEpg),
-                      _pbtn(Icons.subtitles, _openTracks),
+                      _pbtn(Icons.audiotrack, _openTracks),
+            _pbtn(Icons.subtitles, () => _openTracks(subtitles: true)),
                       if (widget.playlist.length > 1) ...<Widget>[
                         _pbtn(Icons.skip_previous, () => _playRelative(-1)),
                         _pbtn(Icons.skip_next, () => _playRelative(1)),

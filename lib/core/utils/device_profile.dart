@@ -6,9 +6,8 @@ import 'package:flutter/material.dart';
 /// Tipo de equipo donde corre la app.
 enum DeviceKind { tv, tablet, phone, unknown }
 
-/// Perfil del dispositivo: sirve para elegir el motor de vídeo adecuado
-/// (en televisores y cajas manda el reproductor nativo; en móvil y tableta, el
-/// compatible con libmpv) y para mostrarlo en soporte.
+/// Perfil del dispositivo para adaptar la interfaz y mostrar datos de soporte.
+/// La reproducción Android utiliza únicamente ExoPlayer.
 ///
 /// Detección (Android):
 /// * **TV / Fire TV / TV box**: la lista de *features* trae

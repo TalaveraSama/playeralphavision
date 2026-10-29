@@ -21,10 +21,7 @@ class PrefsStore {
   static const String _kUserAgent = 'xtream.user_agent';
   static const String _kPreferHttps = 'xtream.prefer_https';
   static const String _kFormat = 'xtream.stream_format';
-  static const String _kVideoDecoder = 'player.video_decoder';
-  static const String _kPlayerEngine = 'player.engine';
   static const String _kBufferMb = 'player.buffer_mb';
-  static const String _kCompatibleBroken = 'player.compatible_broken';
   static const String _kFavorites = 'xtream.favorites';
   static const String _kRecent = 'xtream.recent';
   static const String _kRemember = 'xtream.remember';
@@ -95,32 +92,6 @@ class PrefsStore {
 
   Future<void> saveStreamFormat(StreamFormat format) =>
       _prefs.setString(_kFormat, format.name);
-
-  /// true cuando el motor compatible (libmpv) ya falló en este equipo.
-  bool get compatiblePlayerBroken =>
-      _prefs.getBool(_kCompatibleBroken) ?? false;
-
-  Future<void> saveCompatiblePlayerBroken(bool value) =>
-      _prefs.setBool(_kCompatibleBroken, value);
-
-  /// Decodificacion de video: 'software' (FFmpeg, por defecto) o 'hardware'.
-  String get videoDecoder => _prefs.getString(_kVideoDecoder) ?? 'software';
-
-  Future<void> saveVideoDecoder(String mode) =>
-      _prefs.setString(_kVideoDecoder, mode);
-
-  /// Motor del reproductor: 'exo' (por defecto), 'ijk', 'mpv' o 'vlc'.
-  /// Si el valor guardado no es valido se vuelve a ExoPlayer, que es el mas
-  /// estable en TV/Fire TV.
-  String get playerEngine {
-    final String value = _prefs.getString(_kPlayerEngine) ?? 'exo';
-    return const <String>['exo', 'ijk', 'mpv', 'vlc'].contains(value)
-        ? value
-        : 'exo';
-  }
-
-  Future<void> savePlayerEngine(String engine) =>
-      _prefs.setString(_kPlayerEngine, engine);
 
   /// Precarga (búfer) del directo, en MB.
   int get bufferMb => _prefs.getInt(_kBufferMb) ?? 32;

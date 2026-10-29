@@ -8,10 +8,7 @@ import '../../core/config/config_controller.dart';
 import '../../core/models/playable_item.dart';
 import '../../core/state/app_state.dart';
 import '../../widgets/ad_banner.dart';
-import 'player_native_ijk_page.dart';
 import 'player_texture_page.dart';
-import 'player_vlc_page.dart';
-import 'player_mpv_page.dart';
 
 /// Abre el reproductor mostrando antes el anuncio de pantalla completa si toca.
 ///
@@ -26,6 +23,11 @@ Future<void> openPlayer(
   String? title,
 }) async {
   if (playlist.isEmpty) return;
+  if (!Platform.isAndroid) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Esta edición usa ExoPlayer y solo reproduce en Android / Android TV.')));
+    return;
+  }
 
   final ConfigController config = context.read<ConfigController>();
   final AppState app = context.read<AppState>();
@@ -47,76 +49,8 @@ Future<void> openPlayer(
   PaintingBinding.instance.imageCache.clear();
   PaintingBinding.instance.imageCache.clearLiveImages();
 
-  // Motor elegido por el usuario en Ajustes (ExoPlayer por defecto).
-  final String engine = app.playerEngine;
-  final Object? result = await Navigator.of(context).push<Object>(
-    MaterialPageRoute<Object>(
-      builder: (_) {
-        if (engine == 'ijk') {
-          return PlayerNativeIjkPage(
-            playlist: playlist,
-            initialIndex: initialIndex,
-            headers: app.headers,
-          );
-        }
-        if (engine == 'vlc') {
-          return PlayerVlcPage(
-            categoryName: categoryName,
-            playlist: playlist,
-            initialIndex: initialIndex,
-            headers: app.headers,
-          );
-        }
-        if (engine == 'mpv') {
-          return PlayerMpvPage(
-            playlist: playlist,
-            initialIndex: initialIndex,
-            headers: app.headers,
-            mediaType: mediaType,
-            categoryName: categoryName,
-          );
-        }
-        return PlayerTexturePage(
-          playlist: playlist,
-          initialIndex: initialIndex,
-          headers: app.headers,
-          categoryName: categoryName,
-        );
-      },
-    ),
-  );
-
-  // 2) Si libVLC no arranco (timeout), se reintenta con ExoPlayer.
-  if (result == 'exo' && !Platform.isIOS) {
-    if (!context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PlayerTexturePage(
-          playlist: playlist,
-          initialIndex: initialIndex,
-          headers: app.headers,
-          categoryName: categoryName,
-        ),
-      ),
-    );
-    return;
-  }
-
-  // 3) Segunda opcion: libmpv (media_kit), solo si el panel lo permite.
-  if (result != 'mpv') return;
-  if (!Platform.isAndroid) return;
-  if (!config.config.features.vlcPlayer) return;
-  if (!context.mounted) return;
-
-  await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => PlayerMpvPage(
-        playlist: playlist,
-        initialIndex: initialIndex,
-        headers: app.headers,
-        mediaType: mediaType,
-        categoryName: categoryName,
-      ),
-    ),
-  );
+  await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+    builder: (_) => PlayerTexturePage(playlist: playlist, initialIndex: initialIndex,
+      headers: app.headers, categoryName: categoryName),
+  ));
 }

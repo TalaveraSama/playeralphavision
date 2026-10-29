@@ -437,3 +437,15 @@ pendientes de validar con el SDK instalado.
   individuales ni editar subtítulos grabados en el vídeo. Los otros motores no cambian.
 - Guía y limitaciones: `SUBTITULOS_MEDIA3.md`; pruebas: `player_subtitles_test.dart`.
 - Sintaxis comprobada. Flutter analyzer/tests, Gradle y reproducción real pendientes.
+
+
+### 1.2.45 — ExoPlayer estándar como único motor (nuevo alcance autorizado)
+
+- Retirados VLC, IJK, MPV, DK y extensión Nextlib/FFmpeg, incluidos puentes nativos.
+- Una sola ruta ExoPlayer Media3 con DefaultRenderersFactory y codecs del dispositivo.
+- Sin selector de motor/decodificador externo ni fallback; botones de audio/subtítulos
+  separados. Se conservan Nova3, anuncios, descanso y estilo de subtítulos.
+- Flags/preferencias antiguos no pueden reactivar motores. Esta edición ya no ofrece
+  player iPhone; formatos dependen de codecs Android disponibles.
+- Instalación en carpeta nueva y advertencias: `EXOPLAYER_UNICO.md`.
+- Sintaxis/regresiones estáticas pasadas. Build/Flutter tests/dispositivos pendientes.

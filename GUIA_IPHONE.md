@@ -1,3 +1,8 @@
+> **Aviso de versión:** desde 1.2.45 se retiraron VLC/IJK/MPV por solicitud del propietario.
+> La reproducción de esta edición es exclusivamente Android/Android TV con ExoPlayer.
+> Los pasos iOS de abajo son históricos (1.2.43) y NO preparan un player iPhone actual.
+> Para retomar iPhone hay que aprobar e integrar un backend compatible con iOS.
+
 # Alpha Vision para iPhone — preparación iOS 1.2.43+1047
 
 ## Qué se preparó

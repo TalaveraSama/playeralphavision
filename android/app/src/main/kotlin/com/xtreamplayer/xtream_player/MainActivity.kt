@@ -10,18 +10,6 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        flutterEngine.platformViewsController.registry.registerViewFactory(
-            "dk_video_player",
-            DkPlayerViewFactory(flutterEngine.dartExecutor.binaryMessenger),
-        )
-
-        // Reproductor ijkplayer NATIVO (con lista real de pistas de audio/subtitulo).
-        IjkPlayerHost(
-            applicationContext,
-            flutterEngine.dartExecutor.binaryMessenger,
-            flutterEngine.renderer,
-        )
-
         // Reproductor Media3 con textura de Flutter (sin SurfaceView): vídeo
         // estable en Fire TV. Canal `media3_player`.
         Media3PlayerHost(

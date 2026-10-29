@@ -141,9 +141,7 @@
     "favorites": true,
     "epg": true,
     "allowThemeSwitch": true,
-    "showAccountInfo": true,
-    "vlcPlayer": false,
-    "dkPlayer": true
+    "showAccountInfo": true
   },
   "tmdb": {
     "apiKey": "598ff32ac857d5ece9d1b988e27a4a62"

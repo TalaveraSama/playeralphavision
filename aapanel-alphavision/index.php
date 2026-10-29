@@ -164,7 +164,7 @@ function nova_default(): array {
     ],
     'features' => [
       'search' => true, 'favorites' => true, 'epg' => true,
-      'allowThemeSwitch' => true, 'showAccountInfo' => true, 'vlcPlayer' => true,
+      'allowThemeSwitch' => true, 'showAccountInfo' => true,
     ],
   ];
 }
@@ -544,9 +544,8 @@ function draw(){
     <section><h2>Funciones</h2>
       ${chk('Búsqueda','features.search')}${chk('Favoritos / Mi lista','features.favorites')}
       ${chk('Guía EPG','features.epg')}${chk('Mostrar datos de la cuenta','features.showAccountInfo')}
-      ${chk('Reproductor secundario libmpv (si ExoPlayer falla)','features.vlcPlayer')}
-          </section>
-    <section><h2>Reproductor</h2>
+    </section>
+    <section><h2>Reproductor · ExoPlayer único</h2>
       <div class="row">${inp('Aviso de inactividad (horas, 0 = nunca)','player.idlePromptHours','number')}${inp('Mensaje del aviso','player.idlePromptMessage')}</div>
       ${chk('Modo prueba (aviso cada 60 s)','player.idlePromptTestMode')}
       <div class="hint">Cada X horas la app pregunta «¿sigues viendo?» en los canales en vivo. Con el modo prueba, cada 60 segundos (para verlo sin esperar).</div>
@@ -693,7 +692,7 @@ function draw(){
         <p>El aviso de <b>4 horas / Consejos</b> se configura en <b>Avisos y descanso</b>; no es publicidad y no requiere esta demo.</p>
       </details>
     </section><section><h2>Configuración de anuncios</h2>
-      ${chk('Anuncios activados','ads.enabled')}${chk('Avisos sobre el vídeo (Media3 / iPhone)','ads.inPlayer')}
+      ${chk('Anuncios activados','ads.enabled')}${chk('Avisos sobre ExoPlayer / Android','ads.inPlayer')}
       <div class="row">${inp('Segundos por anuncio (rotación)','ads.rotationSeconds','number')}${inp('Franja visible en el reproductor (s, 0 = fija)','ads.inPlayerSeconds','number')}</div>
       <div class="hint"><b>Tamaños de imagen (TV):</b> Banner <b>728×90</b> · Interstitial <b>1920×1080</b> · Preroll <b>1280×720</b> (16:9) · Overlay <b>400×225</b>.
       En <b>Media3/ExoPlayer</b> activa también Overlay (sin vídeo publicitario encima). Los otros motores conservan su interfaz.

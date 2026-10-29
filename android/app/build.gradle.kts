@@ -91,10 +91,8 @@ flutter {
 }
 
 dependencies {
-    implementation("com.befovy.fijkplayer:fijkplayer-full:0.7.16")
 
-    // Media3 (ExoPlayer) + decodificador de audio FFmpeg (MP1/MP2/MP3, AC3, DTS...).
+    // ExoPlayer estándar (Media3), sin motores ni decodificadores externos.
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
-    implementation("io.github.anilbeesetti:nextlib-media3ext:1.11.1-0.16.0")
 }

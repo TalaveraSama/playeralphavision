@@ -148,3 +148,10 @@ La misma franja Overlay se conecta a VLC en iOS desde 1.2.43. Se mantiene
 vencido vuelve a Inicio, no cierra la app. Antes de distribuir, compila y valida
 esta integración en un iPhone real: el código se preparó sin SDK Apple disponible.
 Consulta `GUIA_IPHONE.md` para firma, CocoaPods y TestFlight.
+
+
+### Cambio 1.2.45
+
+La edición actual usa únicamente ExoPlayer Android. Se retiraron los motores
+alternativos y el soporte VLC de iPhone; el apartado iPhone anterior es histórico.
+Los avisos Overlay siguen sobre ExoPlayer y no requieren otro motor.

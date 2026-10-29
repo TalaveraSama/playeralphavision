@@ -15,6 +15,7 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.hls.HlsMediaSource
@@ -25,9 +26,6 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
-import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.DecoderManager
-import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.DecoderMode
-import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 
 /**
  * Reproductor Media3 (ExoPlayer) que dibuja con una [SurfaceTexture] registrada
@@ -47,27 +45,21 @@ class Media3TexturePlayer(
     private val channel = MethodChannel(messenger, "media3_player_$viewId")
     private val player: ExoPlayer
     private var surface: Surface? = null
-    private lateinit var decoderManager: DecoderManager
 
     private val audioRefs = ArrayList<Pair<Tracks.Group, Int>>()
     private val textRefs = ArrayList<Pair<Tracks.Group, Int>>()
 
     init {
-        decoderManager = DecoderManager()
-        val renderersFactory = NextRenderersFactory(context).setDecoderManager(decoderManager)
+        // Standard ExoPlayer decoders only: no bundled FFmpeg or alternate engine.
+        val renderersFactory = DefaultRenderersFactory(context)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
+            .setEnableDecoderFallback(true)
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(8_000, 40_000, 1_500, 3_000)
             .build()
         player = ExoPlayer.Builder(context, renderersFactory)
             .setLoadControl(loadControl)
             .build()
-        decoderManager.attach(player)
-        // VIDEO: por defecto SOFTWARE (FFmpeg), como pide el cliente.
-        // Dart puede cambiarlo a hardware/auto con el metodo setDecoderMode.
-        decoderManager.selectVideoDecoder(DecoderMode.FFMPEG)
-        // AUDIO: AUTO = MediaCodec y, si no puede (MP2/AC3/EAC3), usa FFmpeg.
-        decoderManager.selectAudioDecoder(DecoderMode.AUTO)
-
         val st: SurfaceTexture = surfaceEntry.surfaceTexture()
         surface = Surface(st)
         player.setVideoSurface(surface)
@@ -252,16 +244,6 @@ class Media3TexturePlayer(
                 result.success(null)
             }
             "getPosition" -> result.success(mapOf("pos" to maxOf(0L, player.currentPosition), "dur" to maxOf(0L, player.duration)))
-            "setDecoderMode" -> {
-                val mode = (call.argument<String>("mode") ?: "software").lowercase()
-                val target = when (mode) {
-                    "hardware" -> DecoderMode.HARDWARE
-                    "auto" -> DecoderMode.AUTO
-                    else -> DecoderMode.FFMPEG
-                }
-                decoderManager.selectVideoDecoder(target)
-                result.success(null)
-            }
             "release" -> {
                 player.release()
                 surface?.release()

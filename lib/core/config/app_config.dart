@@ -505,8 +505,6 @@ class FeaturesConfig {
     this.search = true,
     this.favorites = true,
     this.epg = true,
-    this.dkPlayer = false,
-    this.vlcPlayer = true,
     this.allowThemeSwitch = true,
     this.showAccountInfo = true,
   });
@@ -514,13 +512,6 @@ class FeaturesConfig {
   final bool search;
   final bool favorites;
   final bool epg;
-
-  /// Obsoleto: el motor principal es siempre ExoPlayer (Media3).
-  final bool dkPlayer;
-
-  /// Segundo motor: libmpv (media_kit). Solo se usa si ExoPlayer no puede
-  /// abrir el canal/pelicula. Activado por defecto.
-  final bool vlcPlayer;
 
   final bool allowThemeSwitch;
   final bool showAccountInfo;
@@ -530,10 +521,6 @@ class FeaturesConfig {
         favorites:
             json['favorites'] == null ? true : asBool(json['favorites']),
         epg: json['epg'] == null ? true : asBool(json['epg']),
-        dkPlayer: json['dkPlayer'] == null ? false : asBool(json['dkPlayer']),
-        vlcPlayer: json['vlcPlayer'] == null
-            ? true
-            : asBool(json['vlcPlayer']),
         allowThemeSwitch: json['allowThemeSwitch'] == null
             ? true
             : asBool(json['allowThemeSwitch']),
@@ -547,8 +534,6 @@ class FeaturesConfig {
         'search': search,
         'favorites': favorites,
         'epg': epg,
-        'dkPlayer': dkPlayer,
-        'vlcPlayer': vlcPlayer,
         'allowThemeSwitch': allowThemeSwitch,
         'showAccountInfo': showAccountInfo,
       };

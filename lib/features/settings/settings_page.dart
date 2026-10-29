@@ -116,69 +116,6 @@ class _SettingsPageState extends State<SettingsPage> {
     await context.read<AppState>().logout();
   }
 
-  String _engineLabel(String engine) {
-    switch (engine) {
-      case 'ijk':
-        return 'ijkplayer (nativo)';
-      case 'mpv':
-        return 'libmpv (media_kit)';
-      case 'vlc':
-        return 'libVLC (VLC)';
-      default:
-        return 'ExoPlayer (Media3)';
-    }
-  }
-
-  /// Selector explicito: antes era un ciclo y se "perdia" ExoPlayer.
-  Future<void> _pickEngine(AppState app) async {
-    final List<MapEntry<String, String>> engines = defaultTargetPlatform == TargetPlatform.iOS
-        ? const <MapEntry<String, String>>[MapEntry('vlc', 'VLC · iPhone / iPad')]
-        : const <MapEntry<String, String>>[
-      MapEntry<String, String>('exo', 'ExoPlayer (Media3) - recomendado'),
-      MapEntry<String, String>('ijk', 'ijkplayer (nativo)'),
-      MapEntry<String, String>('mpv', 'libmpv (media_kit)'),
-      MapEntry<String, String>('vlc', 'libVLC (VLC)'),
-    ];
-    final String? picked = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: const Color(0xFF141D2E),
-      builder: (BuildContext ctx) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: <Widget>[
-            const ListTile(
-              title: Text(
-                'Motor del reproductor',
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w800),
-              ),
-            ),
-            const Divider(),
-            for (final MapEntry<String, String> engine in engines)
-              ListTile(
-                leading: Icon(
-                  app.playerEngine == engine.key
-                      ? Icons.check_circle
-                      : Icons.circle_outlined,
-                  color: app.playerEngine == engine.key
-                      ? Colors.white
-                      : Colors.white54,
-                ),
-                title: Text(
-                  engine.value,
-                  style: const TextStyle(color: Colors.white),
-                ),
-                onTap: () => Navigator.of(ctx).pop(engine.key),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (picked == null || picked.isEmpty) return;
-    await app.setPlayerEngine(picked);
-    if (mounted) setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     final AppState app = context.watch<AppState>();
@@ -325,24 +262,10 @@ class _SettingsPageState extends State<SettingsPage> {
           const Divider(height: 24),
           const Divider(height: 24),
           _sectionTitle(theme, 'Reproductor'),
-          ListTile(
-            leading: const Icon(Icons.movie_filter_outlined),
-            title: const Text('Motor del reproductor'),
-            subtitle: Text(
-              '${_engineLabel(app.playerEngine)} \u00b7 pulsa OK para elegir',
-            ),
-            onTap: () => _pickEngine(app),
-          ),
-          if (defaultTargetPlatform != TargetPlatform.iOS) SwitchListTile(
-            secondary: const Icon(Icons.settings_input_component),
-            title: const Text('Decodificaci\u00f3n por hardware'),
-            subtitle: const Text(
-              'Apagado = software (FFmpeg), m\u00e1s compatible. '
-              'Encendido = MediaCodec (decodificador del equipo).',
-            ),
-            value: app.videoDecoder == 'hardware',
-            onChanged: (bool v) =>
-                app.setVideoDecoder(v ? 'hardware' : 'software'),
+          const ListTile(
+            leading: Icon(Icons.movie_filter_outlined),
+            title: Text('ExoPlayer · único motor'),
+            subtitle: Text('Android / Android TV. Decodificación estándar del dispositivo.'),
           ),
           const Divider(height: 24),
           _sectionTitle(theme, 'Subt\u00edtulos'),
