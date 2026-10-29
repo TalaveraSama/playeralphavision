@@ -16,6 +16,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.hls.HlsMediaSource
@@ -38,6 +39,7 @@ class Media3TexturePlayer(
     messenger: BinaryMessenger,
     textureRegistry: TextureRegistry,
     viewId: Long,
+    decoderMode: String = "auto",
 ) : MethodChannel.MethodCallHandler {
 
     private val surfaceEntry: TextureRegistry.SurfaceTextureEntry =
@@ -54,6 +56,15 @@ class Media3TexturePlayer(
         val renderersFactory = DefaultRenderersFactory(context)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
             .setEnableDecoderFallback(true)
+            .setMediaCodecSelector(MediaCodecSelector { mimeType, secure, tunneling ->
+                val available = MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, secure, tunneling)
+                // Audio remains under ExoPlayer's normal selection. No encoder or FFmpeg.
+                if (!mimeType.startsWith("video/")) available else when (decoderMode) {
+                    "hardware" -> available.sortedByDescending { it.hardwareAccelerated }
+                    "software" -> available.filter { it.softwareOnly }
+                    else -> available
+                }
+            })
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(8_000, 40_000, 1_500, 3_000)
             .build()

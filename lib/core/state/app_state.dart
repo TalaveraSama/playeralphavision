@@ -5,6 +5,7 @@ import '../api/xtream_client.dart';
 import '../config/app_config.dart';
 import '../config/config_controller.dart';
 import '../models/media_item.dart';
+import '../models/video_decode_mode.dart';
 import '../models/playable_item.dart';
 import '../models/resume_entry.dart';
 import '../models/stream_format.dart';
@@ -205,6 +206,12 @@ class AppState extends ChangeNotifier {
       preferHttps: input.preferHttps,
       streamToken: config.xtream.streamToken,
     );
+  }
+
+  VideoDecodeMode get videoDecodeMode => _store.videoDecodeMode;
+  Future<void> setVideoDecodeMode(VideoDecodeMode mode) async {
+    await _store.saveVideoDecodeMode(mode);
+    notifyListeners();
   }
 
   // ------------------------------------------------- subtítulos (perfil)

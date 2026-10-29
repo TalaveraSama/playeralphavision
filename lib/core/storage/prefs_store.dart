@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ads/ad_engine.dart';
 import '../models/media_item.dart';
+import '../models/video_decode_mode.dart';
 import '../models/resume_entry.dart';
 import '../models/stream_format.dart';
 import '../models/xtream_credentials.dart';
@@ -37,6 +38,11 @@ class PrefsStore {
   static Future<PrefsStore> create() async {
     return PrefsStore._(await SharedPreferences.getInstance());
   }
+
+  VideoDecodeMode get videoDecodeMode => VideoDecodeMode.parse(
+      _prefs.getString('player.exo_decoder_mode'));
+  Future<void> saveVideoDecodeMode(VideoDecodeMode mode) =>
+      _prefs.setString('player.exo_decoder_mode', mode.id);
 
   String get subtitleColor => _prefs.getString(_kSubtitleColor) ?? '#FFFFFF';
 

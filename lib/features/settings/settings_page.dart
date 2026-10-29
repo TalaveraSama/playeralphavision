@@ -6,6 +6,7 @@ import '../../core/app_info.dart';
 import '../../core/config/app_config.dart';
 import '../../core/config/config_controller.dart';
 import '../../core/models/stream_format.dart';
+import '../../core/models/video_decode_mode.dart';
 import '../../core/models/xtream_account.dart';
 import '../../core/models/xtream_credentials.dart';
 import '../../core/state/app_state.dart';
@@ -266,6 +267,27 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: Icon(Icons.movie_filter_outlined),
             title: Text('ExoPlayer · único motor'),
             subtitle: Text('Android / Android TV. Decodificación estándar del dispositivo.'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.memory),
+            title: const Text('Decodificación de vídeo'),
+            subtitle: Text('${app.videoDecodeMode.label} · se aplica al volver a abrir el reproductor'),
+            onTap: () async {
+              final mode = await showDialog<VideoDecodeMode>(context: context,
+                builder: (ctx) => SimpleDialog(title: const Text('Decodificación de vídeo'),
+                  children: <Widget>[
+                    for (final option in VideoDecodeMode.values) ListTile(
+                      leading: Icon(option == app.videoDecodeMode
+                          ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                      title: Text(option.label), subtitle: Text(option.description),
+                      onTap: () => Navigator.of(ctx).pop(option)),
+                  ]));
+              if (mode != null) await app.setVideoDecodeMode(mode);
+            },
+          ),
+          const ListTile(
+            dense: true, title: Text('Flujo original, sin recodificar'),
+            subtitle: Text('No transcodifica ni genera salida UDP. Audio y vídeo conservan el formato del proveedor.'),
           ),
           const Divider(height: 24),
           _sectionTitle(theme, 'Subt\u00edtulos'),

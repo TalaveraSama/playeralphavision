@@ -31,7 +31,8 @@ class Media3PlayerHost(
         when (call.method) {
             "create" -> {
                 val id = nextId++
-                val player = Media3TexturePlayer(context, messenger, textureRegistry, id)
+                val mode = call.argument<String>("decoderMode") ?: "auto"
+                val player = Media3TexturePlayer(context, messenger, textureRegistry, id, mode)
                 players[id] = player
                 result.success(mapOf("id" to id, "textureId" to player.textureId))
             }

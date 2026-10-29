@@ -459,3 +459,12 @@ pendientes de validar con el SDK instalado.
 - ExoPlayer, firma y preferencias de subtítulos se conservan.
 - Guía: PLAYER_PANTALLA_COMPLETA.md; pruebas: nova3_live_overlay_test.dart.
   Sintaxis comprobada; SDK/build y verificación en TV real pendientes.
+
+
+### 1.2.47 — preferencia de decodificación con único ExoPlayer
+
+- Automático / hardware preferido con fallback de inicialización / software Android.
+- Elección persistente por equipo, aplicada al abrir el reproductor; audio estándar.
+- No añade FFmpeg ni motores, encoder, salida UDP o un falso modo copy/copy.
+- Guía: DECODIFICACION_HARDWARE.md; pruebas: video_decode_mode_test.dart.
+- Validación estática realizada; build y pruebas en equipos reales pendientes.
