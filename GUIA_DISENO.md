@@ -468,3 +468,13 @@ pendientes de validar con el SDK instalado.
 - No añade FFmpeg ni motores, encoder, salida UDP o un falso modo copy/copy.
 - Guía: DECODIFICACION_HARDWARE.md; pruebas: video_decode_mode_test.dart.
 - Validación estática realizada; build y pruebas en equipos reales pendientes.
+
+
+### 1.2.48 — búfer en segundos y umbral de inicio corto
+
+- Sustituye ajuste sin conectar 8/32/64 MB por 10/20/30 s conectado a Media3.
+- Reserva 10 s predeterminada, inicio con 500 ms de contenido y rebuffer 1 s.
+- Reserva máxima no equivale a tiempo obligatorio de espera. No garantiza latencia
+  de arranque frente a servidor/HLS/keyframes lentos; memoria sigue siendo necesaria.
+- Guía BUFFER_SEGUNDOS.md; prueba playback_buffer_test.dart.
+- Validación estática; build/Flutter tests y medición en dispositivos pendientes.

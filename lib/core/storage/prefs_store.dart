@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ads/ad_engine.dart';
 import '../models/media_item.dart';
+import '../models/playback_buffer.dart';
 import '../models/video_decode_mode.dart';
 import '../models/resume_entry.dart';
 import '../models/stream_format.dart';
@@ -22,7 +23,7 @@ class PrefsStore {
   static const String _kUserAgent = 'xtream.user_agent';
   static const String _kPreferHttps = 'xtream.prefer_https';
   static const String _kFormat = 'xtream.stream_format';
-  static const String _kBufferMb = 'player.buffer_mb';
+  static const String _kBufferSeconds = 'player.buffer_seconds';
   static const String _kFavorites = 'xtream.favorites';
   static const String _kRecent = 'xtream.recent';
   static const String _kRemember = 'xtream.remember';
@@ -99,10 +100,10 @@ class PrefsStore {
   Future<void> saveStreamFormat(StreamFormat format) =>
       _prefs.setString(_kFormat, format.name);
 
-  /// Precarga (búfer) del directo, en MB.
-  int get bufferMb => _prefs.getInt(_kBufferMb) ?? 32;
-
-  Future<void> saveBufferMb(int value) => _prefs.setInt(_kBufferMb, value);
+  /// Ignora los antiguos MB: no se pueden convertir a tiempo sin el bitrate.
+  int get bufferSeconds => PlaybackBuffer.normalize(_prefs.getInt(_kBufferSeconds));
+  Future<void> saveBufferSeconds(int value) =>
+      _prefs.setInt(_kBufferSeconds, PlaybackBuffer.normalize(value));
 
   List<MediaItem> get favorites {
     final raw = _prefs.getStringList(_kFavorites) ?? const <String>[];

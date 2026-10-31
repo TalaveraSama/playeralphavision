@@ -6,6 +6,7 @@ import '../../core/app_info.dart';
 import '../../core/config/app_config.dart';
 import '../../core/config/config_controller.dart';
 import '../../core/models/stream_format.dart';
+import '../../core/models/playback_buffer.dart';
 import '../../core/models/video_decode_mode.dart';
 import '../../core/models/xtream_account.dart';
 import '../../core/models/xtream_credentials.dart';
@@ -491,8 +492,8 @@ class _SettingsPageState extends State<SettingsPage> {
           _sectionTitle(theme, 'Reproducción'),
           ListTile(
             leading: const Icon(Icons.speed),
-            title: const Text('Precarga del directo'),
-            subtitle: Text(app.bufferLabel),
+            title: const Text('Búfer de reproducción'),
+            subtitle: Text('${app.bufferLabel} de reserva máxima · no es tiempo de espera'),
             trailing: const Icon(Icons.tune),
             onTap: () => _pickBuffer(app),
           ),
@@ -599,14 +600,13 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
 
-  /// Precarga del directo: cuanto más búfer, menos cortes y más espera al
-  /// cambiar de canal. Se guarda en el dispositivo.
+  /// Reserva en segundos; arranque corto independiente.
   Future<void> _pickBuffer(AppState app) async {
-    const List<int> options = <int>[8, 32, 64];
+    const List<int> options = PlaybackBuffer.options;
     final int? chosen = await showDialog<int>(
       context: context,
       builder: (BuildContext dialogContext) => SimpleDialog(
-        title: const Text('Precarga del directo'),
+        title: const Text('Búfer de reproducción'),
         children: <Widget>[
           for (final int value in options)
             SimpleDialogOption(
@@ -614,7 +614,7 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Row(
                 children: <Widget>[
                   Icon(
-                    app.bufferMb == value
+                    app.bufferSeconds == value
                         ? Icons.radio_button_checked
                         : Icons.radio_button_off,
                     size: 20,
@@ -628,11 +628,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         Text(_bufferLabel(value)),
                         const SizedBox(height: 2),
                         Text(
-                          value == 8
-                              ? 'Cambia de canal al instante (red estable)'
-                              : (value == 64
-                                  ? 'Máxima estabilidad en canales HD'
-                                  : 'Equilibrado (recomendado)'),
+                          value == 10
+                              ? 'Menor reserva para una red estable'
+                              : (value == 30
+                                  ? 'Más reserva ante variaciones de red'
+                                  : 'Reserva intermedia'),
                           style: Theme.of(dialogContext).textTheme.bodySmall,
                         ),
                       ],
@@ -645,20 +645,11 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
     if (chosen == null) return;
-    await app.setBufferMb(chosen);
-    if (mounted) _toast('Precarga: ${_bufferLabel(chosen)}');
+    await app.setBufferSeconds(chosen);
+    if (mounted) _toast('Búfer: ${_bufferLabel(chosen)}. Se aplica al volver a abrir el reproductor.');
   }
 
-  String _bufferLabel(int value) {
-    switch (value) {
-      case 8:
-        return 'Baja (8 MB)';
-      case 64:
-        return 'Alta (64 MB)';
-      default:
-        return 'Media (32 MB)';
-    }
-  }
+  String _bufferLabel(int value) => '$value segundos';
 
   Widget _sectionTitle(ThemeData theme, String title) {
     return Padding(

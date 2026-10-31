@@ -94,6 +94,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     try {
       final Map<dynamic, dynamic>? res = await _host.invokeMethod<Map<dynamic, dynamic>>('create', <String, dynamic>{
           'decoderMode': context.read<AppState>().videoDecodeMode.id,
+          'bufferSeconds': context.read<AppState>().bufferSeconds,
         });
       if (res == null) throw StateError('ExoPlayer no devolvió una instancia');
       if (!mounted) {

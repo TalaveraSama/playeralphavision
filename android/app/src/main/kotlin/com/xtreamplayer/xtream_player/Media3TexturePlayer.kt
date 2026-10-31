@@ -40,6 +40,7 @@ class Media3TexturePlayer(
     textureRegistry: TextureRegistry,
     viewId: Long,
     decoderMode: String = "auto",
+    bufferSeconds: Int = 10,
 ) : MethodChannel.MethodCallHandler {
 
     private val surfaceEntry: TextureRegistry.SurfaceTextureEntry =
@@ -65,8 +66,13 @@ class Media3TexturePlayer(
                     else -> available
                 }
             })
+        val reserveSeconds = if (bufferSeconds in listOf(10, 20, 30)) bufferSeconds else 10
+        val maxBufferMs = reserveSeconds * 1000
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(8_000, 40_000, 1_500, 3_000)
+            // Reserve != startup delay. Begin after ~500 ms of playable media;
+            // rebuffer needs ~1 s. Network/keyframes/manifest still affect startup.
+            .setBufferDurationsMs(maxBufferMs / 2, maxBufferMs, 500, 1_000)
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
         player = ExoPlayer.Builder(context, renderersFactory)
             .setLoadControl(loadControl)

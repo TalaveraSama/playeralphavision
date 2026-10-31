@@ -44,22 +44,11 @@ class AppState extends ChangeNotifier {
   XtreamCredentials? get credentials => _credentials;
   StreamFormat get format => _format;
 
-  /// Precarga (búfer) del directo, en MB.
-  int get bufferMb => _store.bufferMb;
-
-  String get bufferLabel {
-    switch (bufferMb) {
-      case 8:
-        return 'Baja (8 MB)';
-      case 64:
-        return 'Alta (64 MB)';
-      default:
-        return 'Media (32 MB)';
-    }
-  }
-
-  Future<void> setBufferMb(int value) async {
-    await _store.saveBufferMb(value);
+  /// Reserva máxima de reproducción; no obliga a esperar todo ese tiempo.
+  int get bufferSeconds => _store.bufferSeconds;
+  String get bufferLabel => '$bufferSeconds segundos';
+  Future<void> setBufferSeconds(int value) async {
+    await _store.saveBufferSeconds(value);
     notifyListeners();
   }
   bool get rememberSession => _rememberSession;
