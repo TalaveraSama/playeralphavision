@@ -47,6 +47,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   int? _textureId;
   int _playerId = 0;
   bool _unavailable = false;
+  bool _foreground = true;
+  int _loadVersion = 0;
   List<PlayerSubtitleCue> _subtitleCues = const <PlayerSubtitleCue>[];
   Timer? _autoSwitchTimer;
   int _index = 0;
@@ -83,7 +85,32 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _forceImmersive();
+    if (state == AppLifecycleState.resumed) {
+      _foreground = true;
+      _forceImmersive();
+      unawaited(_resumeNativePlayback());
+      _startPosPolling();
+      _scheduleHide();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _foreground = false;
+      _loadVersion++;
+      _retryTimer?.cancel(); _watchdog?.cancel(); _autoSwitchTimer?.cancel();
+      _hideTimer?.cancel(); _posTimer?.cancel();
+      unawaited(_nativeLifecycle('suspendPlayback'));
+    }
+  }
+
+  Future<void> _nativeLifecycle(String method) async {
+    try { await _channel?.invokeMethod<void>(method); } catch (_) { /* Native activity also guards lifecycle. */ }
+  }
+  Future<void> _resumeNativePlayback() async {
+    await _nativeLifecycle('resumePlayback');
+    if (mounted && _foreground && !_paused) await _nativeLifecycle('resume');
+  }
+  Future<void> _releaseNative(int id) async {
+    try { await _host.invokeMethod<void>('release', <String, dynamic>{'id': id}); }
+    catch (_) { /* Activity cleanup may already have released it. */ }
   }
 
   void _forceImmersive() {
@@ -122,9 +149,12 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   Future<void> _load(PlayableItem item) async {
     if (mounted) setState(() { _buffering = true; _networkSample = null; _subtitleCues = const <PlayerSubtitleCue>[]; });
     if (_unavailable && mounted) setState(() => _unavailable = false);
-    _startWatchdog();
-    await _channel?.invokeMethod('setUrl', <String, dynamic>{'url': item.url, 'headers': widget.headers, 'isLive': item.isLive});
-    await _channel?.invokeMethod('start');
+    if (_foreground) _startWatchdog();
+    final version = ++_loadVersion;
+    final channel = _channel;
+    await channel?.invokeMethod('setUrl', <String, dynamic>{'url': item.url, 'headers': widget.headers, 'isLive': item.isLive});
+    if (!mounted || version != _loadVersion || !_foreground) return;
+    await channel?.invokeMethod('start');
   }
 
   Future<void> _onMethod(MethodCall call) async {
@@ -159,6 +189,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   void _retry() {
+    if (!mounted || !_foreground) return;
     _failCount++;
     if (_failCount >= 8) {
       _failCount = 0;
@@ -188,6 +219,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     if (widget.playlist.length < 2) return;
     _failCount = 0;
     _retryTimer?.cancel();
+    _autoSwitchTimer?.cancel();
     setState(() => _index = (_index + offset + widget.playlist.length) % widget.playlist.length);
     _wakeControls();
     await _load(_current);
@@ -495,6 +527,12 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   bool _onKey(KeyEvent event) {
     if (ModalRoute.of(context)?.isCurrent != true) return false;
+    if (event is KeyRepeatEvent && _nova3Live && !_nova3Fullscreen &&
+        <LogicalKeyboardKey>{LogicalKeyboardKey.arrowUp, LogicalKeyboardKey.arrowDown,
+          LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowRight}.contains(event.logicalKey)) {
+      _scheduleHide();
+      return false;
+    }
     if (event is KeyDownEvent) {
       final LogicalKeyboardKey k = event.logicalKey;
       // Teclas universales del mando: play/pausa y seek.
@@ -550,6 +588,11 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   @override
   void dispose() {
+    _foreground = false;
+    _loadVersion++;
+    _channel?.setMethodCallHandler(null);
+    _channel = null;
+    _posTimer?.cancel();
     _retryTimer?.cancel();
     _watchdog?.cancel();
     _hideTimer?.cancel();
@@ -557,7 +600,9 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     HardwareKeyboard.instance.removeHandler(_onKey);
     WakelockPlus.disable();
     if (_playerId > 0) {
-      _host.invokeMethod('release', <String, dynamic>{'id': _playerId});
+      final id = _playerId;
+      _playerId = 0;
+      unawaited(_releaseNative(id));
     }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();

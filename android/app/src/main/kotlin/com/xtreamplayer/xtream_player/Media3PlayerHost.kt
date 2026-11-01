@@ -22,9 +22,24 @@ class Media3PlayerHost(
     private val channel = MethodChannel(messenger, "media3_player")
     private val players = HashMap<Long, Media3TexturePlayer>()
     private var nextId = 1L
+    private var suspended = false
 
     init {
         channel.setMethodCallHandler(this)
+    }
+
+    fun suspendAll() {
+        suspended = true
+        players.values.forEach { it.suspendPlayback() }
+    }
+    fun resumeAll() {
+        suspended = false
+        players.values.forEach { it.resumePlayback() }
+    }
+    fun dispose() {
+        channel.setMethodCallHandler(null)
+        players.values.forEach { it.dispose() }
+        players.clear()
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -34,6 +49,7 @@ class Media3PlayerHost(
                 val mode = call.argument<String>("decoderMode") ?: "auto"
                 val bufferSeconds = call.argument<Number>("bufferSeconds")?.toInt() ?: 10
                 val player = Media3TexturePlayer(context, messenger, textureRegistry, id, mode, bufferSeconds)
+                if (suspended) player.suspendPlayback()
                 players[id] = player
                 result.success(mapOf("id" to id, "textureId" to player.textureId))
             }

@@ -111,19 +111,21 @@ class NovaBadge extends StatelessWidget {
 /// Zona táctil que además responde al mando de TV (OK/enter) y muestra un
 /// borde cuando está enfocada, para poder llegar con las flechas.
 class NovaFocusable extends StatefulWidget {
-  const NovaFocusable({super.key, required this.onTap, required this.child, this.borderRadius = const BorderRadius.all(Radius.circular(10)), this.autofocus = false});
+  const NovaFocusable({super.key, required this.onTap, required this.child, this.borderRadius = const BorderRadius.all(Radius.circular(10)), this.autofocus = false, this.focusNode});
   final VoidCallback? onTap;
   final Widget child;
   final BorderRadius borderRadius;
   final bool autofocus;
+  final FocusNode? focusNode;
   @override
   State<NovaFocusable> createState() => _NovaFocusableState();
 }
 class _NovaFocusableState extends State<NovaFocusable> {
-  final FocusNode _node = FocusNode();
+  final FocusNode _ownedNode = FocusNode();
+  FocusNode get _node => widget.focusNode ?? _ownedNode;
   bool _focused = false;
   @override
-  void dispose() { _node.dispose(); super.dispose(); }
+  void dispose() { _ownedNode.dispose(); super.dispose(); }
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.select || event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
       widget.onTap?.call();

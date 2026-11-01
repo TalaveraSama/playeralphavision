@@ -8,11 +8,12 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private var media3Host: Media3PlayerHost? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         // Reproductor Media3 con textura de Flutter (sin SurfaceView): vídeo
         // estable en Fire TV. Canal `media3_player`.
-        Media3PlayerHost(
+        media3Host = Media3PlayerHost(
             applicationContext,
             flutterEngine.dartExecutor.binaryMessenger,
             flutterEngine.renderer,
@@ -32,6 +33,25 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        media3Host?.resumeAll()
+    }
+    override fun onStop() {
+        media3Host?.suspendAll()
+        super.onStop()
+    }
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        media3Host?.dispose()
+        media3Host = null
+        super.cleanUpFlutterEngine(flutterEngine)
+    }
+    override fun onDestroy() {
+        media3Host?.dispose()
+        media3Host = null
+        super.onDestroy()
     }
 
     private fun installApk(path: String, result: MethodChannel.Result) {

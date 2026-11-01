@@ -48,6 +48,9 @@ class Media3TexturePlayer(
     private val channel = MethodChannel(messenger, "media3_player_$viewId")
     private val player: ExoPlayer
     private var surface: Surface? = null
+    private var released = false
+    private var suspended = false
+    private var resumeWhenVisible = false
 
     private val audioRefs = ArrayList<Pair<Tracks.Group, Int>>()
     private val textRefs = ArrayList<Pair<Tracks.Group, Int>>()
@@ -233,6 +236,7 @@ class Media3TexturePlayer(
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (released) { result.error("RELEASED", "Player already released", null); return }
         when (call.method) {
             "setUrl" -> {
                 val url = call.argument<String>("url") ?: ""
@@ -243,9 +247,17 @@ class Media3TexturePlayer(
                 player.setMediaSource(buildSource(url, headers))
                 result.success(null)
             }
-            "start" -> { player.prepare(); player.play(); result.success(null) }
-            "pause" -> { player.pause(); result.success(null) }
-            "resume" -> { player.play(); result.success(null) }
+            "start" -> {
+                if (suspended) resumeWhenVisible = true else { player.prepare(); player.play() }
+                result.success(null)
+            }
+            "pause" -> { resumeWhenVisible = false; player.pause(); result.success(null) }
+            "resume" -> {
+                if (suspended) resumeWhenVisible = true else player.play()
+                result.success(null)
+            }
+            "suspendPlayback" -> { suspendPlayback(); result.success(null) }
+            "resumePlayback" -> { resumePlayback(); result.success(null) }
             "getTracks" -> result.success(tracksPayload())
             "selectAudio" -> {
                 selectTrack(C.TRACK_TYPE_AUDIO, call.argument<Int>("index") ?: 0)
@@ -261,19 +273,30 @@ class Media3TexturePlayer(
                 result.success(null)
             }
             "getPosition" -> result.success(mapOf("pos" to maxOf(0L, player.currentPosition), "dur" to maxOf(0L, player.duration)))
-            "release" -> {
-                player.release()
-                surface?.release()
-                surface = null
-                surfaceEntry.release()
-                channel.setMethodCallHandler(null)
-                result.success(null)
-            }
+            "release" -> { dispose(); result.success(null) }
             else -> result.notImplemented()
         }
     }
 
+    fun suspendPlayback() {
+        if (released || suspended) return
+        resumeWhenVisible = player.playWhenReady
+        suspended = true
+        player.stop() // Stop loading and audio/video while the app is not visible.
+    }
+
+    fun resumePlayback() {
+        if (released || !suspended) return
+        suspended = false
+        player.prepare()
+        if (player.isCurrentMediaItemLive) player.seekToDefaultPosition()
+        player.playWhenReady = resumeWhenVisible
+    }
+
     fun dispose() {
+        if (released) return
+        released = true
+        channel.setMethodCallHandler(null)
         player.release()
         surface?.release()
         surface = null
