@@ -215,12 +215,13 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     try {
       await channel?.invokeMethod<void>('stopPlayback');
       await _securityApp.preparePlayback();
-      if (Uri.tryParse(item.url)?.scheme != 'https') {
+      final playbackUrl = _securityApp.playbackUrl(item);
+      if (Uri.tryParse(playbackUrl)?.scheme != 'https') {
         throw const XtreamException('Este canal necesita una URL HTTPS válida del proveedor.', statusCode: 400);
       }
       await _securityApp.checkMediaDrm(item);
       if (!mounted || version != _loadVersion || !_foreground || _authorizationBlocked) return;
-      await channel?.invokeMethod('setUrl', <String, dynamic>{'url': item.url, 'headers': _securityApp.headers, 'isLive': item.isLive});
+      await channel?.invokeMethod('setUrl', <String, dynamic>{'url': playbackUrl, 'headers': _securityApp.headers, 'isLive': item.isLive});
     if (!mounted || version != _loadVersion || !_foreground) return;
     await channel?.invokeMethod<void>('resumePlayback');
     if (!mounted || version != _loadVersion || !_foreground || _authorizationBlocked) return;

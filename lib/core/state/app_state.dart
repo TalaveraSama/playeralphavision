@@ -54,6 +54,14 @@ class AppState extends ChangeNotifier {
       rethrow;
     }
   }
+  String _streamOverrideFor(XtreamApi api) {
+    final configured = Uri.tryParse(_config.config.xtream.server);
+    // Do not send another provider's credentials to this brand's video origin.
+    return configured != null && configured.hasAuthority && configured.origin == api.baseUri.origin
+        ? _config.config.xtream.streamServer : '';
+  }
+  String playbackUrl(PlayableItem item) => api.resolvePlaybackUrl(item.url);
+
   Future<void> checkMediaDrm(PlayableItem item) async {
     final id = item.streamId ?? item.source?.id;
     if (id == null) return;
@@ -169,7 +177,7 @@ class AppState extends ChangeNotifier {
         final api = XtreamApi.fromCredentials(effective);
         final client = restoringClient = _newClient(api);
         final account = await client.authenticate();
-        api.configureStreams(account.serverInfo);
+        api.configureStreams(account.serverInfo, secureStreamServer: _streamOverrideFor(api));
         if (account.isActive) {
           await _devices.attach(client);
           _playbackBlock = null;
@@ -218,7 +226,7 @@ class AppState extends ChangeNotifier {
       final api = XtreamApi.fromCredentials(effective);
       client = _newClient(api);
       final account = await client.authenticate();
-      api.configureStreams(account.serverInfo);
+      api.configureStreams(account.serverInfo, secureStreamServer: _streamOverrideFor(api));
       if (!account.isActive) {
         _lastError = account.statusText;
         client.dispose();

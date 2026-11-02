@@ -402,16 +402,19 @@ class ThemeConfig {
 class XtreamConfig {
   const XtreamConfig({
     this.server = '',
+    this.streamServer = '',
     this.userAgent = 'VLC/3.0.20 LibVLC/3.0.20',
     this.streamToken = '',
   });
 
   final String server;
+  final String streamServer;
   final String userAgent;
   final String streamToken;
 
   factory XtreamConfig.fromJson(Map<String, dynamic> json) => XtreamConfig(
         server: asStringOr(json['server'], ''),
+        streamServer: asStringOr(json['streamServer'], ''),
         userAgent: asStringOr(json['userAgent'], 'VLC/3.0.20 LibVLC/3.0.20'),
         streamToken: asStringOr(json['streamToken'], ''),
       );
@@ -419,6 +422,7 @@ class XtreamConfig {
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'server': server,
+        'streamServer': streamServer,
         'userAgent': userAgent,
         'streamToken': streamToken,
       };

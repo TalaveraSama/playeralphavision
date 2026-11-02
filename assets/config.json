@@ -89,6 +89,7 @@
   },
   "xtream": {
     "server": "https://tvadmin.alphadigitalnic.xyz",
+    "streamServer": "https://live-stream.alphadigitalnic.xyz",
     "userAgent": "AlphaVision-Player",
     "streamToken": ""
   },

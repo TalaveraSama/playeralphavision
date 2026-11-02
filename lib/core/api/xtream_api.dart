@@ -34,9 +34,23 @@ class XtreamApi {
   String deviceToken = '';
 
   XtreamApi? _streamApi;
+  int? _advertisedHttpPort;
 
   /// API remains on the login host. Video follows the origin advertised by the panel.
-  void configureStreams(XtreamServerInfo info) {
+  void configureStreams(XtreamServerInfo info, {String secureStreamServer = ''}) {
+    _streamApi = null;
+    _advertisedHttpPort = int.tryParse(info.port ?? '');
+    if (secureStreamServer.trim().isNotEmpty) {
+      final target = Uri.tryParse(secureStreamServer.trim());
+      if (target == null || target.scheme != 'https' || target.host.isEmpty ||
+          target.userInfo.isNotEmpty || target.hasQuery || target.hasFragment ||
+          (target.path.isNotEmpty && target.path != '/')) {
+        throw const FormatException('Configura streamServer como un origen HTTPS válido, sin rutas ni credenciales.');
+      }
+      _streamApi = XtreamApi(baseUri: target, username: username, password: password,
+        userAgent: userAgent, streamToken: streamToken);
+      return;
+    }
     final advertised = info.url?.trim() ?? '';
     if (advertised.isEmpty) return;
     final protocol = (info.protocol ?? baseUri.scheme).toLowerCase();
@@ -46,11 +60,26 @@ class XtreamApi {
         !['http', 'https'].contains(uri.scheme)) return;
     final explicitOrigin = advertised.contains('://');
     final port = int.tryParse((uri.scheme == 'https' ? info.httpsPort ?? info.port : info.port) ?? '');
-    final target = !uri.hasPort && !explicitOrigin && port != null && port > 0 && port <= 65535
+    var target = !uri.hasPort && !explicitOrigin && port != null && port > 0 && port <= 65535
         ? uri.replace(port: port) : uri;
+    final tlsPort = int.tryParse(info.httpsPort ?? '');
+    if (target.scheme == 'http' && tlsPort != null && tlsPort > 0 && tlsPort <= 65535) {
+      target = target.replace(scheme: 'https', port: tlsPort);
+    }
     _streamApi = XtreamApi(baseUri: target, username: username, password: password,
       userAgent: userAgent, streamToken: streamToken);
   }
+  /// Only upgrade the configured video host. Never redirect arbitrary credential URLs.
+  String resolvePlaybackUrl(String value) {
+    final uri = Uri.tryParse(value);
+    final target = _streamApi?.baseUri;
+    if (uri == null || target == null || target.scheme != 'https' || uri.scheme != 'http' ||
+        uri.host != target.host || uri.userInfo.isNotEmpty ||
+        ![80, target.port, _advertisedHttpPort].contains(uri.port) ||
+        !RegExp(r'^/(live|movie|series|timeshift)/').hasMatch(uri.path)) return value;
+    return uri.replace(scheme: 'https', port: target.hasPort ? target.port : 443).toString();
+  }
+
   String _streamBuild(List<String> segments) => (_streamApi ?? this)._build(segments);
 
   /// Segmentos de autenticación: con token usa `/live/{token}/...`,

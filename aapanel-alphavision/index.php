@@ -140,7 +140,7 @@ function nova_default(): array {
         'lightButtons' => false, 'heroTint' => '#191007',
       ]],
     ],
-    'xtream' => ['server' => '', 'userAgent' => 'AlphaVision-Player', 'streamToken' => ''],
+    'xtream' => ['server' => '', 'streamServer' => '', 'userAgent' => 'AlphaVision-Player', 'streamToken' => ''],
     'usageReminder' => [
       'enabled' => true, 'intervalMinutes' => 240, 'countdownSeconds' => 10,
       'title' => 'Consejos',
@@ -538,7 +538,7 @@ function draw(){
       <div class="hint">Gratis en themoviedb.org → Ajustes → API. Se usa para el tráiler cuando el panel no lo trae.</div>
     </section>
     <section><h2>Servidor Xtream</h2>
-      <div class="row">${inp('Panel (host:puerto)','xtream.server')}${inp('User-Agent','xtream.userAgent')}${inp('Access Token (XUI.one)','xtream.streamToken')}</div>
+      <div class="row">${inp('Panel HTTPS (API/login)','xtream.server')}${inp('Servidor HTTPS de vídeo (opcional)','xtream.streamServer')}${inp('User-Agent','xtream.userAgent')}${inp('Access Token (XUI.one)','xtream.streamToken')}</div>
       <div class="hint">Este User-Agent es el que la app manda a los streams (XUI.one).</div>
     </section>
     <section><h2>Funciones</h2>
