@@ -1,3 +1,7 @@
+# 1.2.59+1063 — Una sola APK universal
+
+Los dos CMD habituales generan únicamente el APK universal. Se retira la generación incondicional por arquitectura: `-SplitAbi` queda opcional. Plataformas explícitas ARM32/ARM64/x86_64 y verificación de las bibliotecas Flutter/VLC dentro del APK antes de entregarlo. minSdk 24 conservado por Fire OS compatible y soporte previsto a teléfonos Android 9+. No equivale a certificar todos los equipos ni resolver el cierre de VLC. Detalles: [APK_UNIVERSAL.md](APK_UNIVERSAL.md). Checks estáticos únicamente, sin APK compilado aquí.
+
 # 1.2.58+1062 — Diagnóstico y protección de inicio de VLC
 
 Se reportó cierre total al abrir un stream. **No se dispone de logcat ni de un dispositivo para confirmar la causa.** Esta versión añade conservación explícita de las clases VideoLAN en R8/JNI y captura de LinkageError/RuntimeException al crear VLC: un error de carga Java/JNI debe devolver un error de plataforma en lugar de escapar del MethodChannel. Flutter muestra el fallo de inicialización. Se usa ApplicationContext y se crea la textura después de cargar el motor. Esto no captura SIGSEGV/SIGABRT ni garantiza corregir el cierre reportado.

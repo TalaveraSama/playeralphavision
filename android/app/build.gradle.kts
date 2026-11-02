@@ -60,7 +60,8 @@ android {
         applicationId = "com.alphavision.ott"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // Flutter exige 24 como mínimo; los plugins de vídeo también.
+        // Keep API 24 for compatible Fire OS devices; Android 9+ phones (API 28+)
+        // are covered too. Raising this to 28 would exclude older Fire TV models.
         minSdk = 24
         multiDexEnabled = true
         targetSdk = flutter.targetSdkVersion

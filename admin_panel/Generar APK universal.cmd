@@ -8,7 +8,7 @@ cd /d "%PROJECT%"
 
 echo ============================================================
 echo  APK UNIVERSAL - un solo archivo para TODO
-echo  Fire TV Stick / Cube, TV box y telefonos Android
+echo  Fire TV con Fire OS compatible, Android TV y telefonos Android 9+
 echo  Proyecto: %PROJECT%
 echo ============================================================
 echo.

@@ -337,7 +337,7 @@ try {
   Get-ChildItem -LiteralPath (Join-Path $projectRoot 'build\app\outputs\flutter-apk') -Filter '*.apk' -ErrorAction SilentlyContinue |
     Remove-Item -Force -ErrorAction Stop
   Info 'Compilando APK universal... (puede tardar unos minutos)'
-  $code = Invoke-FlutterLogged -Arguments @('build', 'apk', '--release') -LogPath $logPath
+  $code = Invoke-FlutterLogged -Arguments @('build', 'apk', '--release', '--target-platform', 'android-arm,android-arm64,android-x64') -LogPath $logPath
   Get-Content -LiteralPath $logPath -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
   if ($code -ne 0) { Fail "La compilación falló (código $code). Detalle en build\whitelabel-build.log" }
 
@@ -348,26 +348,41 @@ try {
     Remove-Item -Force -ErrorAction Stop
   $universalApk = Join-Path $projectRoot 'build\app\outputs\flutter-apk\app-release.apk'
   if (-not (Test-Path -LiteralPath $universalApk)) { Fail 'Flutter terminó sin generar app-release.apk.' }
-  Copy-Item -LiteralPath $universalApk -Destination $stagingDir -Force -ErrorAction Stop
-  Ok 'APK universal generado y protegido antes de compilar por arquitectura.'
-
-  # APKs por arquitectura SIEMPRE: si no se generan, dist\ reutiliza los de
-  # una compilacion anterior y se reparten versiones viejas.
-  Info 'Compilando APK por arquitectura...'
-  $splitLog = Join-Path $projectRoot 'build\whitelabel-split-abi.log'
-  Info "Este segundo paso también puede tardar varios minutos. Registro: $splitLog"
-  $code = Invoke-FlutterLogged -Arguments @('build', 'apk', '--release', '--split-per-abi') -LogPath $splitLog
-  Get-Content -LiteralPath $splitLog -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
-  if ($code -ne 0) {
-    Warn "Falló la compilación por arquitectura (código $code); se entrega solo la universal. Detalle en $splitLog"
-  } else {
+  # A successful Gradle exit alone does not prove all native ABIs are packaged.
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $archive = [System.IO.Compression.ZipFile]::OpenRead($universalApk)
+  try {
+    $entries = @($archive.Entries | ForEach-Object { $_.FullName })
     foreach ($abi in @('armeabi-v7a', 'arm64-v8a', 'x86_64')) {
-      $splitApk = Join-Path $projectRoot "build\app\outputs\flutter-apk\app-$abi-release.apk"
-      if (Test-Path -LiteralPath $splitApk) {
-        Copy-Item -LiteralPath $splitApk -Destination $stagingDir -Force -ErrorAction Stop
-      } else { Warn "No se encontró el APK $abi; no se reutilizará uno anterior." }
+      foreach ($library in @('libflutter.so', 'libvlcjni.so', 'libvlc.so')) {
+        if ($entries -notcontains "lib/$abi/$library") {
+          Fail "APK no universal: falta lib/$abi/$library. No se entregara este archivo."
+        }
+      }
+    }
+  } finally { $archive.Dispose() }
+  Copy-Item -LiteralPath $universalApk -Destination $stagingDir -Force -ErrorAction Stop
+  Ok 'APK universal verificado: ARM32, ARM64 y x86_64 incluidos.'
+
+  # Optional only: the normal CMDs deliver ONE universal APK.
+  if ($SplitAbi) {
+    Info 'Compilando APK por arquitectura...'
+    $splitLog = Join-Path $projectRoot 'build\whitelabel-split-abi.log'
+    Info "Este segundo paso también puede tardar varios minutos. Registro: $splitLog"
+    $code = Invoke-FlutterLogged -Arguments @('build', 'apk', '--release', '--split-per-abi') -LogPath $splitLog
+    Get-Content -LiteralPath $splitLog -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
+    if ($code -ne 0) {
+      Warn "Falló la compilación por arquitectura (código $code); se entrega solo la universal. Detalle en $splitLog"
+    } else {
+      foreach ($abi in @('armeabi-v7a', 'arm64-v8a', 'x86_64')) {
+        $splitApk = Join-Path $projectRoot "build\app\outputs\flutter-apk\app-$abi-release.apk"
+        if (Test-Path -LiteralPath $splitApk) {
+          Copy-Item -LiteralPath $splitApk -Destination $stagingDir -Force -ErrorAction Stop
+        } else { Warn "No se encontró el APK $abi; no se reutilizará uno anterior." }
+      }
     }
   }
+
 } finally {
   $ErrorActionPreference = $previousPreference
   Pop-Location
@@ -402,6 +417,7 @@ foreach ($apk in $apks) {
 }
 
 Write-Host ''
-Ok 'Terminado. Reparte los APK de la carpeta dist\.'
+if ($SplitAbi) { Ok 'Terminado. APK universal y variantes opcionales en dist\.' }
+else { Ok 'Terminado. Reparte UN SOLO APK universal: el archivo sin sufijo de arquitectura en dist\.' }
 Info 'Recuerda: los usuarios deben permitir "instalar apps de origen desconocido".'
 exit 0
