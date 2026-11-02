@@ -9,8 +9,6 @@ import '../../core/models/epg_entry.dart';
 import '../../core/models/media_item.dart';
 import '../../core/config/ads_config.dart';
 import '../../widgets/player_notice.dart';
-import '../../widgets/player_subtitles.dart';
-import '../../core/config/app_config.dart' show parseHexColor;
 import '../../widgets/nova/nova_ui.dart';
 import '../../widgets/nova/nova3_live_layout.dart';
 import '../../widgets/nova/nova3_loading.dart';
@@ -19,9 +17,7 @@ import '../../core/config/config_controller.dart';
 import '../../core/state/app_state.dart';
 import '../../core/api/xtream_client.dart';
 
-/// Reproductor Media3 + FFmpeg **dibujado como textura de Flutter**
-/// (SurfaceTexture). Igual que hace `video_player`/la app Purple: sin
-/// SurfaceView, sin parpadeos ni cuadros congelados en Fire TV.
+/// VLC integrado mediante textura Flutter; controles y perfiles compartidos.
 class PlayerTexturePage extends StatefulWidget {
   const PlayerTexturePage({
     super.key,
@@ -42,10 +38,11 @@ class PlayerTexturePage extends StatefulWidget {
 
 class _PlayerTexturePageState extends State<PlayerTexturePage>
     with WidgetsBindingObserver {
-  static const MethodChannel _host = MethodChannel('media3_player');
+  static const MethodChannel _host = MethodChannel('vlc_player');
 
   MethodChannel? _channel;
   int? _textureId;
+  double _videoAspectRatio = 16 / 9;
   int _playerId = 0;
   bool _unavailable = false;
   late final AppState _securityApp;
@@ -99,7 +96,6 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   bool _foreground = true;
   int _loadVersion = 0;
-  List<PlayerSubtitleCue> _subtitleCues = const <PlayerSubtitleCue>[];
   Timer? _autoSwitchTimer;
   int _index = 0;
   int _failCount = 0;
@@ -176,8 +172,10 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       final Map<dynamic, dynamic>? res = await _host.invokeMethod<Map<dynamic, dynamic>>('create', <String, dynamic>{
           'decoderMode': context.read<AppState>().videoDecodeMode.id,
           'bufferSeconds': context.read<AppState>().bufferSeconds,
+          'subtitleColor': context.read<AppState>().subtitleColor,
+          'subtitleSize': context.read<AppState>().subtitleSize,
         });
-      if (res == null) throw StateError('ExoPlayer no devolvió una instancia');
+      if (res == null) throw StateError('VLC no devolvió una instancia');
       if (!mounted || _authorizationBlocked) {
         await _host.invokeMethod('release', <String, dynamic>{'id': res['id']});
         return;
@@ -185,7 +183,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       final int id = (res['id'] as num).toInt();
       final int textureId = (res['textureId'] as num).toInt();
       _playerId = id;
-      _channel = MethodChannel('media3_player_$id');
+      _channel = MethodChannel('vlc_player_$id');
       _channel?.setMethodCallHandler(_onMethod);
       if (!mounted) return;
       setState(() => _textureId = textureId);
@@ -195,7 +193,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
         setState(() { _unavailable = true; _buffering = false; });
         _watchdog?.cancel();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No se pudo iniciar ExoPlayer. Vuelve a abrir el canal.')));
+          content: Text('No se pudo iniciar VLC. Vuelve a abrir el canal.')));
       }
     }
   }
@@ -207,7 +205,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       setState(() { _unavailable = true; _buffering = false; _playbackError = 'Espera antes de volver a conectar. El panel limitó las peticiones.'; });
       return;
     }
-    if (mounted) setState(() { _buffering = true; _networkSample = null; _subtitleCues = const <PlayerSubtitleCue>[]; });
+    if (mounted) setState(() { _buffering = true; _networkSample = null; });
     if (_unavailable && mounted) setState(() => _unavailable = false);
     _watchdog?.cancel();
     final version = ++_loadVersion;
@@ -220,7 +218,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
         throw const XtreamException('Este canal necesita una URL HTTPS válida del proveedor.', statusCode: 400);
       }
       if (!mounted || version != _loadVersion || !_foreground || _authorizationBlocked) return;
-      await channel?.invokeMethod('setUrl', <String, dynamic>{'url': playbackUrl, 'allowHttp': _securityApp.allowHttpPlayback, 'isHls': item.source?.containerExtension == 'm3u8', 'headers': _securityApp.headers, 'isLive': item.isLive});
+      await channel?.invokeMethod('setUrl', <String, dynamic>{'url': playbackUrl, 'panelOrigin': _securityApp.api.origin, 'allowHttp': _securityApp.allowHttpPlayback, 'isHls': item.source?.containerExtension == 'm3u8', 'headers': _securityApp.headers, 'isLive': item.isLive});
     if (!mounted || version != _loadVersion || !_foreground) return;
     await channel?.invokeMethod<void>('resumePlayback');
     if (!mounted || version != _loadVersion || !_foreground || _authorizationBlocked) return;
@@ -244,8 +242,9 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   Future<void> _onMethod(MethodCall call) async {
     switch (call.method) {
-      case 'onCues':
-        if (mounted) setState(() => _subtitleCues = PlayerSubtitleCue.decode(call.arguments));
+      case 'onVideoSize':
+        final ratio = (call.arguments as num?)?.toDouble();
+        if (mounted && ratio != null && ratio.isFinite && ratio > 0) setState(() => _videoAspectRatio = ratio);
         break;
       case 'onError':
         await _handlePlaybackError(call.arguments);
@@ -741,13 +740,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   );
 
   Widget _videoWithSubtitles({required double bottomInset}) {
-    final app = context.watch<AppState>();
-    return Stack(fit: StackFit.expand, children: <Widget>[
-      Texture(textureId: _textureId!),
-      PlayerSubtitles(cues: _subtitleCues,
-        color: parseHexColor(app.subtitleColor, Colors.white),
-        fontSize: app.subtitleSize, bottomInset: bottomInset),
-    ]);
+    return Center(child: AspectRatio(aspectRatio: _videoAspectRatio,
+      child: Texture(textureId: _textureId!)));
   }
 
   Widget _buildPlayer(BuildContext context) {

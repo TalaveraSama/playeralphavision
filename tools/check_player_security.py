@@ -19,13 +19,14 @@ assert config.find('base-config').attrib['cleartextTrafficPermitted'] == 'true'
 assert all(el.attrib.get('src') != 'user' for el in config.iter('certificates'))
 api = text('lib/core/api/xtream_api.dart')
 assert "'X-Device-Token': deviceToken" in api
-player = text(native + 'Media3TexturePlayer.kt')
-assert '.setDefaultRequestProperties(headers)' in player
-assert 'setLoadErrorHandlingPolicy(policy)' in player and 'C.TIME_UNSET' in player
-assert 'player.clearMediaItems()' in player
+player = text(native + 'VlcTexturePlayer.kt')
+relay = text(native + 'VlcStreamGateway.kt')
+assert 'conn.setRequestProperty(name, value)' in relay
+assert 'report(conn, status)' in relay and 'errorSent' in player
+assert 'gateway?.close()' in player
 for path in (root / native).glob('*.kt'):
     assert 'android.util.Log.' not in path.read_text(), path
-assert 'LOG_LEVEL_OFF' in text(native + 'MainActivity.kt')
+assert '"--quiet"' in player
 page = text('lib/features/player/player_texture_page.dart')
 assert "status == 429 || status == 503" in page and 'renewDevice:' in page
 assert 'Duration(seconds: 90)' in page and 'await _checkHeartbeat()' in page
@@ -33,8 +34,8 @@ assert '_securityApp.removeListener(_sessionChanged)' in page
 assert "!(api.allowHttp && uri.scheme == 'http')" in text('lib/core/api/xtream_client.dart')
 state = text('lib/core/state/app_state.dart')
 assert '_profileSource != ProfileSource.tvlister' in state
-assert 'spec.uri.scheme == "http"' in player
-assert 'HTTP no autorizado para este perfil' in player
+assert 'allowHttp && url.protocol == "http"' in relay
+assert 'url.protocol == "https" && next.protocol != "https"' in relay
 print('OK: static secure storage, device headers, HTTPS, error/lifecycle gates and log checks')
 if not config.findall('.//pin-set'):
     print('PENDING: real panel hostname + distinct current/backup SPKI pins; do not call this security-closed.')

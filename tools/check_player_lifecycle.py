@@ -3,16 +3,16 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 base = root / 'android/app/src/main/kotlin/com/xtreamplayer/xtream_player'
 activity = (base / 'MainActivity.kt').read_text()
-host = (base / 'Media3PlayerHost.kt').read_text()
-player = (base / 'Media3TexturePlayer.kt').read_text()
-for marker in ['override fun onStop()', 'media3Host?.suspendAll()',
-               'override fun onDestroy()', 'override fun cleanUpFlutterEngine', 'media3Host?.dispose()']:
+host = (base / 'VlcPlayerHost.kt').read_text()
+player = (base / 'VlcTexturePlayer.kt').read_text()
+for marker in ['override fun onStop()', 'vlcHost?.suspendAll()',
+               'override fun onDestroy()', 'override fun cleanUpFlutterEngine', 'vlcHost?.dispose()']:
     assert marker in activity, marker
 assert 'players.clear()' in host
 assert 'if (released) return' in player
 assert 'player.stop()' in player
 assert 'channel.setMethodCallHandler(null)' in player
-assert 'if (suspended || !appVisible) resumeWhenVisible = true' in player
+assert 'if (suspended || !visible) resumeWhenVisible = true' in player
 layout = (root / 'lib/widgets/nova/nova3_live_layout.dart').read_text()
 for marker in ['ScrollController()', 'itemExtent: _rowExtent', '_scroll.jumpTo(offset)',
                'focus.requestFocus()', 'oldWidget.index != widget.index']:

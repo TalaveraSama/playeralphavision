@@ -14,7 +14,7 @@ assert "'profiles.state'" in s
 native = 'android/app/src/main/kotlin/com/xtreamplayer/xtream_player/'
 assert '"profiles.state"' in read(native + 'SecureSessionHost.kt')
 assert 'ACTION_OPEN_DOCUMENT' in read(native + 'MainActivity.kt')
-assert 'HTTP no autorizado para este perfil' in read(native + 'Media3TexturePlayer.kt')
-assert '.setAllowCrossProtocolRedirects(false)' in read(native + 'Media3TexturePlayer.kt')
+assert 'allowHttp && url.protocol == "http"' in read(native + 'VlcStreamGateway.kt')
+assert 'url.protocol == "https" && next.protocol != "https"' in read(native + 'VlcStreamGateway.kt')
 assert "item.directUrl ?? api.liveUrl" in s
 print('OK: encrypted profiles, isolated state, external provider policy, guarded HTTP and native import (static)')

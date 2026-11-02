@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class Nova3Loading extends StatefulWidget {
   const Nova3Loading({super.key, this.bytesPerSecond});
-  /// Muestra de Media3; null significa que aún no existe medición.
+  /// Muestra de el reproductor; null significa que aún no existe medición.
   final double? bytesPerSecond;
   @override
   State<Nova3Loading> createState() => _Nova3LoadingState();

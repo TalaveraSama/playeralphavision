@@ -1,3 +1,5 @@
+> **Actualización 1.2.56:** el reproductor principal ahora es LibVLC. Este documento describe una versión anterior; las diferencias y límites actuales están en [REPRODUCTOR_VLC.md](REPRODUCTOR_VLC.md).
+
 # 1.2.48+1052 — búfer por tiempo e inicio más corto
 
 Ajustes → Reproducción → Búfer de reproducción ofrece **10, 20 o 30 segundos**,

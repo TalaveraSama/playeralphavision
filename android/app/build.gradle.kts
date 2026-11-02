@@ -94,9 +94,10 @@ flutter {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
     implementation("androidx.security:security-crypto:1.1.0")
 
-    // ExoPlayer estándar (Media3), sin motores ni decodificadores externos.
-    implementation("androidx.media3:media3-exoplayer:1.11.1")
-    implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
+    // Official VideoLAN LibVLC for IPTV playback. video_player remains for ads only.
+    implementation("org.videolan.android:libvlc-all:3.6.3")
 }

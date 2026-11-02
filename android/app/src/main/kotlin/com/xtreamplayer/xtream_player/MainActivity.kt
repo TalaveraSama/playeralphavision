@@ -12,13 +12,12 @@ class MainActivity : FlutterActivity() {
     private var playlistChannel: MethodChannel? = null
     private var playlistResult: MethodChannel.Result? = null
     private var secureSessionHost: SecureSessionHost? = null
-    private var media3Host: Media3PlayerHost? = null
+    private var vlcHost: VlcPlayerHost? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         // Session-wide: prevent route-transition/recents frames from exposing video.
         // This is screen protection, not protection against network capture/root.
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        androidx.media3.common.util.Log.setLogLevel(androidx.media3.common.util.Log.LOG_LEVEL_OFF)
         playlistChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "alphavision/playlists")
         playlistChannel?.setMethodCallHandler { call, result ->
                 if (call.method != "pick") { result.notImplemented(); return@setMethodCallHandler }
@@ -31,9 +30,9 @@ class MainActivity : FlutterActivity() {
                 } catch (_: Exception) { playlistResult = null; result.error("PICKER", "No hay selector de archivos disponible", null) }
             }
         secureSessionHost = SecureSessionHost(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
-        // Reproductor Media3 con textura de Flutter (sin SurfaceView): vídeo
-        // estable en Fire TV. Canal `media3_player`.
-        media3Host = Media3PlayerHost(
+        // Reproductor VLC con textura de Flutter (sin SurfaceView): vídeo
+        // estable en Fire TV. Canal `vlc_player`.
+        vlcHost = VlcPlayerHost(
             applicationContext,
             flutterEngine.dartExecutor.binaryMessenger,
             flutterEngine.renderer,
@@ -84,18 +83,18 @@ class MainActivity : FlutterActivity() {
 
     override fun onStart() {
         super.onStart()
-        media3Host?.resumeAll()
+        vlcHost?.resumeAll()
     }
     override fun onResume() {
         super.onResume()
-        media3Host?.resumeAll() // Mark visible; Flutter must authorize before playback.
+        vlcHost?.resumeAll() // Mark visible; Flutter must authorize before playback.
     }
     override fun onPause() {
-        media3Host?.suspendAll()
+        vlcHost?.suspendAll()
         super.onPause()
     }
     override fun onStop() {
-        media3Host?.suspendAll()
+        vlcHost?.suspendAll()
         super.onStop()
     }
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
@@ -105,8 +104,8 @@ class MainActivity : FlutterActivity() {
         playlistResult = null
         secureSessionHost?.dispose()
         secureSessionHost = null
-        media3Host?.dispose()
-        media3Host = null
+        vlcHost?.dispose()
+        vlcHost = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
     override fun onDestroy() {
@@ -116,8 +115,8 @@ class MainActivity : FlutterActivity() {
         playlistResult = null
         secureSessionHost?.dispose()
         secureSessionHost = null
-        media3Host?.dispose()
-        media3Host = null
+        vlcHost?.dispose()
+        vlcHost = null
         super.onDestroy()
     }
 

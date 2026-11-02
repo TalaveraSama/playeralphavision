@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 enum DeviceKind { tv, tablet, phone, unknown }
 
 /// Perfil del dispositivo para adaptar la interfaz y mostrar datos de soporte.
-/// La reproducción Android utiliza únicamente ExoPlayer.
+/// La reproducción Android utiliza únicamente VLC.
 ///
 /// Detección (Android):
 /// * **TV / Fire TV / TV box**: la lista de *features* trae

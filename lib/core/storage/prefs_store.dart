@@ -63,9 +63,10 @@ class PrefsStore {
   Future<void> _writeSecureList(String key, List<String> values) => secure.write(key, jsonEncode(values));
 
   VideoDecodeMode get videoDecodeMode => VideoDecodeMode.parse(
+      _prefs.getString('player.vlc_decoder_mode') ??
       _prefs.getString('player.exo_decoder_mode'));
   Future<void> saveVideoDecodeMode(VideoDecodeMode mode) =>
-      _prefs.setString('player.exo_decoder_mode', mode.id);
+      _prefs.setString('player.vlc_decoder_mode', mode.id);
 
   String get subtitleColor => _prefs.getString(_kSubtitleColor) ?? '#FFFFFF';
 

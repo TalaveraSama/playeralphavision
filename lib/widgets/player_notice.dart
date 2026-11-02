@@ -7,7 +7,7 @@ import '../core/config/ads_config.dart';
 import '../core/config/config_controller.dart';
 import 'net_image.dart';
 
-/// Aviso no modal sobre Media3. Las pausas de descanso NO pasan por publicidad.
+/// Aviso no modal sobre el reproductor. Las pausas de descanso NO pasan por publicidad.
 class PlayerNotice extends StatefulWidget {
   const PlayerNotice({super.key, required this.child, required this.mediaType,
     required this.title, this.categoryName});

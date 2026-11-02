@@ -1,10 +1,10 @@
 /// Preferences apply to standard Android video decoders, not encoding/output.
 enum VideoDecodeMode {
-  auto('auto', 'Automático', 'ExoPlayer elige los decodificadores del equipo.'),
+  auto('auto', 'Automático', 'VLC elige la decodificación disponible.'),
   hardware('hardware', 'Hardware preferido',
       'Prioriza aceleración disponible; permite otra opción compatible si falla al iniciar.'),
-  software('software', 'Software de Android',
-      'Solo decodificadores software del sistema. Algunos formatos no estarán disponibles.');
+  software('software', 'Software VLC',
+      'Decodificación por software de VLC; puede consumir más CPU.');
 
   const VideoDecodeMode(this.id, this.label, this.description);
   final String id, label, description;

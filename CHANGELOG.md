@@ -1,3 +1,11 @@
+# 1.2.56+1060 — VLC principal (2026-11-02)
+
+Reemplazo independiente sobre LibVLC oficial 3.6.3, textura de vídeo completa, controles existentes, audio/SPU, decodificación auto/hardware/software y reserva HLS 10/20/30 s. Puente loopback para conservar TLS Android, tokens por origen exacto y errores HTTP. Se conservan perfiles y seguridad sin integración DRM. Tests JVM añadidos; sintaxis y checks estáticos ejecutados, pero no hay compilación ni prueba de dispositivo/APK. ExoPlayer puede permanecer para anuncios. Detalles: [REPRODUCTOR_VLC.md](REPRODUCTOR_VLC.md).
+
+> Las reglas/notas de motores anteriores que siguen debajo son **históricas**; no representan el motor actual. El cambio a VLC fue solicitado explícitamente por el usuario.
+
+---
+
 # CHANGELOG / ANOTADOR DE CAMBIOS — Alpha Vision Digital
 
 > Este archivo es la memoria del proyecto. **Léelo antes de tocar el reproductor.**

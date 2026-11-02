@@ -1,3 +1,5 @@
+> **Actualización 1.2.56:** el reproductor principal ahora es LibVLC. Este documento describe una versión anterior; las diferencias y límites actuales están en [REPRODUCTOR_VLC.md](REPRODUCTOR_VLC.md).
+
 # 1.2.55+1059 — Sin integración DRM, con seguridad de acceso
 
 ## Retirado

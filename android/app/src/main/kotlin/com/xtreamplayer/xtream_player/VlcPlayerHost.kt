@@ -7,20 +7,20 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
 
 /**
- * Host del reproductor Media3 con textura de Flutter.
+ * Host del reproductor VLC con textura de Flutter.
  *
- * Canal `media3_player`:
+ * Canal `vlc_player`:
  *  - `create`  -> { id, textureId }
  *  - `release` -> { id }
  */
-class Media3PlayerHost(
+class VlcPlayerHost(
     private val context: Context,
     private val messenger: BinaryMessenger,
     private val textureRegistry: TextureRegistry,
 ) : MethodChannel.MethodCallHandler {
 
-    private val channel = MethodChannel(messenger, "media3_player")
-    private val players = HashMap<Long, Media3TexturePlayer>()
+    private val channel = MethodChannel(messenger, "vlc_player")
+    private val players = HashMap<Long, VlcTexturePlayer>()
     private var nextId = 1L
     private var suspended = false
 
@@ -52,7 +52,7 @@ class Media3PlayerHost(
                 val id = nextId++
                 val mode = call.argument<String>("decoderMode") ?: "auto"
                 val bufferSeconds = call.argument<Number>("bufferSeconds")?.toInt() ?: 10
-                val player = Media3TexturePlayer(context, messenger, textureRegistry, id, mode, bufferSeconds)
+                val player = VlcTexturePlayer(context, messenger, textureRegistry, id, mode, bufferSeconds, call.argument<String>("subtitleColor") ?: "#FFFFFF", call.argument<Number>("subtitleSize")?.toInt() ?: 22)
                 if (suspended) player.setAppVisible(false)
                 players[id] = player
                 result.success(mapOf("id" to id, "textureId" to player.textureId))

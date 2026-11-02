@@ -1,3 +1,5 @@
+> **Actualización 1.2.56:** el reproductor principal ahora es LibVLC. Este documento describe una versión anterior; las diferencias y límites actuales están en [REPRODUCTOR_VLC.md](REPRODUCTOR_VLC.md).
+
 # Corrección de subtítulos — 1.2.44+1048
 
 ## Causa encontrada

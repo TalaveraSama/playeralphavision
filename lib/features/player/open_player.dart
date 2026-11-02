@@ -27,7 +27,7 @@ Future<void> openPlayer(
   if (playlist.isEmpty || _playerOpen) return;
   if (!Platform.isAndroid) {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Esta edición usa ExoPlayer y solo reproduce en Android / Android TV.')));
+      content: Text('Esta edición usa VLC y solo reproduce en Android / Android TV.')));
     return;
   }
 
@@ -57,7 +57,7 @@ Future<void> openPlayer(
     if (!context.mounted) return;
   }
 
-  // ExoPlayer (Media3) es el motor principal. Se suelta la cache de
+  // VLC (LibVLC) es el motor principal. Se suelta la cache de
   // imagenes antes de abrir el reproductor para no competir con el video.
   PaintingBinding.instance.imageCache.clear();
   PaintingBinding.instance.imageCache.clearLiveImages();

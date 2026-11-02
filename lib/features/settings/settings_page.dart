@@ -278,7 +278,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _sectionTitle(theme, 'Reproductor'),
           const ListTile(
             leading: Icon(Icons.movie_filter_outlined),
-            title: Text('ExoPlayer · único motor'),
+            title: Text('VLC · reproductor predeterminado'),
             subtitle: Text('Android / Android TV. Decodificación estándar del dispositivo.'),
           ),
           ListTile(
@@ -508,7 +508,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.speed),
             title: const Text('Búfer de reproducción'),
-            subtitle: Text('${app.bufferLabel} de reserva máxima · no es tiempo de espera'),
+            subtitle: Text('${app.bufferLabel} de reserva HLS · caché inicial VLC: 300 ms'),
             trailing: const Icon(Icons.tune),
             onTap: () => _pickBuffer(app),
           ),
