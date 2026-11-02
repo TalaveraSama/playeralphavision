@@ -5,6 +5,7 @@ import 'core/config/config_controller.dart';
 import 'core/state/app_state.dart';
 import 'core/theme/app_themes.dart';
 import 'features/auth/login_page.dart';
+import 'features/profiles/profiles_page.dart';
 import 'features/home/home_shell.dart';
 import 'features/home/nova_shell.dart';
 import 'features/update/update_dialog.dart';
@@ -127,7 +128,7 @@ class _RootGateState extends State<_RootGate> {
     // El tema decide el armazón: la portada NOVA usa su propio contenedor
     // (barra superior en pantallas anchas y barra inferior en el móvil); el
     // resto de temas siguen con las pestañas de siempre.
-    if (!app.isLoggedIn) return const LoginPage();
+    if (!app.isLoggedIn) return app.profiles.isEmpty ? const LoginPage() : const ProfilesPage();
     return config.theme.isNova ? NovaShell(key: ValueKey<String>(config.theme.id)) : const HomeShell();
   }
 }

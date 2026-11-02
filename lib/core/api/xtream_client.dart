@@ -30,7 +30,7 @@ class XtreamException implements Exception {
 /// Cliente HTTP de la API `player_api.php` (Xtream Codes v2 / XUI.one).
 class XtreamClient {
   XtreamClient({required this.api, http.Client? httpClient})
-      : _http = httpClient ?? PanelHttpClient.create();
+      : _http = httpClient ?? PanelHttpClient.create(allowHttp: api.allowHttp);
 
   final XtreamApi api;
   final http.Client _http;
@@ -181,7 +181,7 @@ class XtreamClient {
       asMap(await _get(api.apiUri({'action': action, ...args})));
 
   Future<dynamic> _get(Uri uri) async {
-    if (uri.scheme != 'https') throw const XtreamException('Este panel requiere una dirección HTTPS válida.', statusCode: 400);
+    if (uri.scheme != 'https' && !(api.allowHttp && uri.scheme == 'http')) throw const XtreamException('Este panel requiere una dirección HTTPS válida.', statusCode: 400);
     final remaining = retryRemaining;
     if (remaining != null) throw XtreamException('Espera antes de volver a conectar.', statusCode: 429, retryAfter: remaining);
     http.Response response;

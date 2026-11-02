@@ -61,6 +61,7 @@ class MediaItem {
     required this.id,
     required this.name,
     this.icon,
+    this.directUrl,
     this.categoryId,
     this.rating,
     this.containerExtension,
@@ -85,6 +86,7 @@ class MediaItem {
   final String id;
   final String name;
   final String? icon;
+  final String? directUrl;
   final String? categoryId;
   final double? rating;
   final String? containerExtension;
@@ -186,6 +188,7 @@ class MediaItem {
       id: asStringOr(json['id'], ''),
       name: asStringOr(json['name'], 'Sin nombre'),
       icon: asString(json['icon']),
+      directUrl: asString(json['directUrl']),
       categoryId: asString(json['categoryId']),
       rating: asDoubleOrNull(json['rating']),
       containerExtension: asString(json['containerExtension']),
@@ -211,6 +214,7 @@ class MediaItem {
       'id': id,
       'name': name,
       'icon': icon,
+      'directUrl': directUrl,
       'categoryId': categoryId,
       'rating': rating,
       'containerExtension': containerExtension,
@@ -259,6 +263,7 @@ class MediaItem {
       id: id ?? this.id,
       name: name ?? this.name,
       icon: icon ?? this.icon,
+      directUrl: this.directUrl,
       categoryId: categoryId ?? this.categoryId,
       rating: rating ?? this.rating,
       containerExtension: containerExtension ?? this.containerExtension,

@@ -14,11 +14,13 @@ class XtreamApi {
     required this.password,
     this.userAgent = kDefaultUserAgent,
     this.streamToken = '',
+    this.allowHttp = false,
   });
 
-  factory XtreamApi.fromCredentials(XtreamCredentials credentials) {
+  factory XtreamApi.fromCredentials(XtreamCredentials credentials, {bool allowHttp = false}) {
     return XtreamApi(
       baseUri: credentials.baseUri,
+      allowHttp: allowHttp,
       username: credentials.username,
       password: credentials.password,
       userAgent: credentials.userAgent,
@@ -31,6 +33,7 @@ class XtreamApi {
   final String password;
   final String userAgent;
   final String streamToken;
+  final bool allowHttp;
   String deviceToken = '';
 
   XtreamApi? _streamApi;
@@ -73,7 +76,7 @@ class XtreamApi {
     var target = !uri.hasPort && !explicitOrigin && port != null && port > 0 && port <= 65535
         ? uri.replace(port: port) : uri;
     final tlsPort = int.tryParse(info.httpsPort ?? '');
-    if (target.scheme == 'http' && tlsPort != null && tlsPort > 0 && tlsPort <= 65535) {
+    if (target.scheme == 'http' && !allowHttp && tlsPort != null && tlsPort > 0 && tlsPort <= 65535) {
       final activePort = int.tryParse(info.port ?? '');
       final port = const {443, 8443, 2053, 2083, 2087, 2096}.contains(activePort) ? activePort! : tlsPort;
       target = target.replace(scheme: 'https', port: port);

@@ -1,3 +1,4 @@
+import '../profiles/profiles_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
@@ -473,7 +474,9 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           const Divider(height: 24),
           _sectionTitle(theme, 'Cuenta'),
-          ListTile(leading: const Icon(Icons.link_off), title: const Text('Desvincular este aparato'), onTap: _unlinkDevice),
+          ListTile(leading: const Icon(Icons.switch_account), title: const Text('Perfiles IPTV / agregar servidor o lista'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProfilesPage()))),
+          if (app.usesDeviceSecurity) ListTile(leading: const Icon(Icons.link_off), title: const Text('Desvincular este aparato'), onTap: _unlinkDevice),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: OutlinedButton.icon(

@@ -13,6 +13,9 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
@@ -234,17 +237,33 @@ class Media3TexturePlayer(
         player.trackSelectionParameters = builder.build()
     }
 
-    private fun buildSource(url: String, headers: Map<String, String>): MediaSource {
+    private fun buildSource(url: String, headers: Map<String, String>, allowHttp: Boolean, isHls: Boolean): MediaSource {
         // El User-Agent del panel (AlphaVision-Player) debe ir SIEMPRE; si no,
         // XUI.one devuelve una pagina HTML y el HLS falla con #EXTM3U.
         val ua = headers["User-Agent"]?.takeIf { it.isNotBlank() } ?: "AlphaVision-Player"
-        require(Uri.parse(url).scheme.equals("https", true)) { "HTTPS requerido" }
+        require(Uri.parse(url).scheme == "https" || (allowHttp && Uri.parse(url).scheme == "http")) { "HTTPS requerido" }
         val ds = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(false)
             .setConnectTimeoutMs(8000)
             .setReadTimeoutMs(12000)
             .setUserAgent(ua)
             .setDefaultRequestProperties(headers)
         val item = MediaItem.Builder().setUri(url).build()
+        val guarded = DataSource.Factory {
+            val upstream = ds.createDataSource()
+            object : DataSource {
+                override fun open(spec: DataSpec): Long {
+                    if (spec.uri.scheme != "https" && !(allowHttp && spec.uri.scheme == "http"))
+                        throw java.io.IOException("HTTP no autorizado para este perfil")
+                    return upstream.open(spec)
+                }
+                override fun read(buffer: ByteArray, offset: Int, length: Int) = upstream.read(buffer, offset, length)
+                override fun getUri() = upstream.uri
+                override fun getResponseHeaders() = upstream.responseHeaders
+                override fun addTransferListener(listener: TransferListener) = upstream.addTransferListener(listener)
+                override fun close() = upstream.close()
+            }
+        }
         val policy = object : DefaultLoadErrorHandlingPolicy() {
             override fun getRetryDelayMsFor(info: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
                 val failure = generateSequence(info.exception as Throwable?) { it.cause }
@@ -253,10 +272,10 @@ class Media3TexturePlayer(
                 return super.getRetryDelayMsFor(info)
             }
         }
-        return if ((Uri.parse(url).path ?: "").lowercase().endsWith(".m3u8")) {
-            HlsMediaSource.Factory(ds).setLoadErrorHandlingPolicy(policy).createMediaSource(item)
+        return if (isHls || (Uri.parse(url).path ?: "").lowercase().endsWith(".m3u8")) {
+            HlsMediaSource.Factory(guarded).setLoadErrorHandlingPolicy(policy).createMediaSource(item)
         } else {
-            ProgressiveMediaSource.Factory(ds).setLoadErrorHandlingPolicy(policy).createMediaSource(item)
+            ProgressiveMediaSource.Factory(guarded).setLoadErrorHandlingPolicy(policy).createMediaSource(item)
         }
     }
 
@@ -270,7 +289,7 @@ class Media3TexturePlayer(
                 clearCues()
                 player.stop()
                 player.clearMediaItems()
-                player.setMediaSource(buildSource(url, headers))
+                player.setMediaSource(buildSource(url, headers, call.argument<Boolean>("allowHttp") == true, call.argument<Boolean>("isHls") == true))
                 result.success(null)
             }
             "stopPlayback" -> { player.stop(); player.clearMediaItems(); result.success(null) }

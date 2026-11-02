@@ -1,3 +1,4 @@
+import '../profiles/profiles_page.dart';
 import 'dart:async';
 import '../../widgets/tv_text_field.dart';
 
@@ -293,6 +294,8 @@ class _LoginPageState extends State<LoginPage> {
                               ),
 ),
                               const SizedBox(height: 22),
+                              OutlinedButton.icon(icon: const Icon(Icons.switch_account), label: const Text('Perfiles / agregar servidor o lista'),
+                                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProfilesPage()))),
                               FilledButton(
                                 focusNode: _submitFocus,
                                 onPressed: app.loggingIn || app.loginRetryRemaining != null ? null : _submit,

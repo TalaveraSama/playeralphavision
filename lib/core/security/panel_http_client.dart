@@ -5,12 +5,15 @@ import 'secure_session.dart';
 
 /// Android's HTTPS stack honors network_security_config (including configured pins).
 class PanelHttpClient extends http.BaseClient {
+  PanelHttpClient({this.allowHttp = false, this.maxResponseBytes = 64 * 1024 * 1024});
+  final int maxResponseBytes;
+  final bool allowHttp;
   bool _closed = false;
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    if (_closed || request.url.scheme != 'https') throw http.ClientException('HTTPS requerido');
+    if (_closed || (request.url.scheme != 'https' && !(allowHttp && request.url.scheme == 'http'))) throw http.ClientException('HTTPS requerido');
     final result = await SecureSession.channel.invokeMapMethod<String, dynamic>('request', {
-      'url': request.url.toString(), 'headers': request.headers,
+      'url': request.url.toString(), 'headers': request.headers, 'allowHttp': allowHttp, 'maxResponseBytes': maxResponseBytes,
     });
     if (_closed || result == null) throw http.ClientException('Petición cancelada');
     final bytes = utf8.encode(result['body'] as String? ?? '');
@@ -19,5 +22,5 @@ class PanelHttpClient extends http.BaseClient {
   }
   @override
   void close() { _closed = true; }
-  static http.Client create() => Platform.isAndroid ? PanelHttpClient() : http.Client();
+  static http.Client create({bool allowHttp = false, int maxResponseBytes = 64 * 1024 * 1024}) => Platform.isAndroid ? PanelHttpClient(allowHttp: allowHttp, maxResponseBytes: maxResponseBytes) : http.Client();
 }

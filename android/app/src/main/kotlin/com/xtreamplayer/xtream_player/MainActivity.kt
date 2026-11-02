@@ -8,11 +8,24 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private var playlistChannel: MethodChannel? = null
+    private var playlistResult: MethodChannel.Result? = null
     private var secureSessionHost: SecureSessionHost? = null
     private var media3Host: Media3PlayerHost? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         androidx.media3.common.util.Log.setLogLevel(androidx.media3.common.util.Log.LOG_LEVEL_OFF)
+        playlistChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "alphavision/playlists")
+        playlistChannel?.setMethodCallHandler { call, result ->
+                if (call.method != "pick") { result.notImplemented(); return@setMethodCallHandler }
+                if (playlistResult != null) { result.error("BUSY", "Selector abierto", null); return@setMethodCallHandler }
+                try {
+                    playlistResult = result
+                    startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+                    }, 7301)
+                } catch (_: Exception) { playlistResult = null; result.error("PICKER", "No hay selector de archivos disponible", null) }
+            }
         secureSessionHost = SecureSessionHost(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         // Reproductor Media3 con textura de Flutter (sin SurfaceView): vídeo
         // estable en Fire TV. Canal `media3_player`.
@@ -38,6 +51,33 @@ class MainActivity : FlutterActivity() {
             }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != 7301) return
+        val result = playlistResult ?: return
+        playlistResult = null
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) { result.success(null); return }
+        Thread {
+            try {
+                val bytes = contentResolver.openInputStream(uri)?.use { input ->
+                    val out = java.io.ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
+                    while (true) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        require(out.size() + n <= 10 * 1024 * 1024)
+                        out.write(buffer, 0, n)
+                    }
+                    out.toByteArray() }
+                    ?: throw java.io.IOException()
+                require(bytes.size <= 10 * 1024 * 1024)
+                val text = bytes.toString(Charsets.UTF_8)
+                runOnUiThread { result.success(text) }
+            } catch (_: Exception) { runOnUiThread { result.error("FILE", "No se pudo leer la lista o supera 10 MB", null) } }
+        }.start()
+    }
+
     override fun onStart() {
         super.onStart()
         media3Host?.resumeAll()
@@ -55,6 +95,10 @@ class MainActivity : FlutterActivity() {
         super.onStop()
     }
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        playlistChannel?.setMethodCallHandler(null)
+        playlistChannel = null
+        playlistResult?.error("CLOSED", "Selector cerrado", null)
+        playlistResult = null
         secureSessionHost?.dispose()
         secureSessionHost = null
         media3Host?.dispose()
@@ -62,6 +106,10 @@ class MainActivity : FlutterActivity() {
         super.cleanUpFlutterEngine(flutterEngine)
     }
     override fun onDestroy() {
+        playlistChannel?.setMethodCallHandler(null)
+        playlistChannel = null
+        playlistResult?.error("CLOSED", "Selector cerrado", null)
+        playlistResult = null
         secureSessionHost?.dispose()
         secureSessionHost = null
         media3Host?.dispose()

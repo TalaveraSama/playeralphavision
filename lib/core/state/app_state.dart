@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../api/xtream_api.dart';
 import '../api/xtream_client.dart';
+import '../api/m3u_client.dart';
+import '../models/iptv_profile.dart';
+import '../../features/catalog/catalog_cache.dart';
 import '../config/app_config.dart';
 import '../config/config_controller.dart';
 import '../models/media_item.dart';
@@ -19,6 +23,90 @@ class AppState extends ChangeNotifier {
   AppState(this._store, this._config, {this.clientFactory}) : _devices = DeviceSession(_store.secure);
   final XtreamClient Function(XtreamApi)? clientFactory;
   XtreamClient _newClient(XtreamApi api) => clientFactory?.call(api) ?? XtreamClient(api: api);
+  ProfileSource _profileSource = ProfileSource.tvlister;
+  bool _allowExternalHttp = false;
+  bool get allowHttpPlayback => _allowExternalHttp && _profileSource != ProfileSource.tvlister;
+  bool get usesDeviceSecurity => _profileSource == ProfileSource.tvlister;
+  final List<IptvProfile> _profiles = [];
+  List<IptvProfile> get profiles => List.unmodifiable(_profiles);
+  final Map<String, dynamic> _profileData = {};
+  String? _activeProfile;
+  String? get activeProfileId => _activeProfile;
+  bool _switchingProfile = false;
+  bool get switchingProfile => _switchingProfile;
+  Future<void> _saveProfiles() => _store.secure.write('profiles.state', jsonEncode({
+    'profiles': _profiles.map((p) => p.toJson()).toList(), 'data': _profileData}));
+  Future<void> _snapshotProfile() async {
+    if (_activeProfile == null) return;
+    _profileData[_activeProfile!] = {for (final key in ['xtream.favorites', 'xtream.recent', 'xtream.resume', 'device.session'])
+      key: _store.secure.values[key]};
+    await _saveProfiles();
+  }
+  Future<void> addProfile(IptvProfile profile) async {
+    if (_switchingProfile) throw StateError('Espera a terminar el cambio de perfil.');
+    if (_profiles.fold<int>(0, (n, p) => n + p.playlistText.length) + profile.playlistText.length > 10 * 1024 * 1024) {
+      throw const FormatException('Las listas importadas superan el límite total de 10 MB.');
+    }
+    if (_profiles.length >= 20) throw const FormatException('Máximo 20 perfiles.');
+    // Preserve the existing brand account before adding a second provider.
+    if (_profiles.isEmpty && _credentials != null && isLoggedIn) {
+      final old = _credentials!;
+      _activeProfile = 'legacy';
+      _profiles.add(IptvProfile(id: 'legacy', name: 'Cuenta actual', source: _profileSource,
+        server: old.server, username: old.username, password: old.password, allowHttp: allowHttpPlayback));
+      await _snapshotProfile();
+    }
+    _profiles.add(profile);
+    await _saveProfiles(); notifyListeners();
+  }
+  Future<void> removeProfile(String id) async {
+    if (_switchingProfile) return;
+    if (_activeProfile == id) {
+      await logout(); _activeProfile = null;
+      _favorites.clear(); _recent.clear(); _resume.clear();
+      await _store.clearLists(); await _store.clearResumeList();
+    }
+    _profiles.removeWhere((p) => p.id == id); _profileData.remove(id);
+    await _saveProfiles(); notifyListeners();
+  }
+  Future<bool> activateProfile(IptvProfile profile) async {
+    if (_switchingProfile) return false;
+    _switchingProfile = true; notifyListeners();
+    try {
+      await _snapshotProfile();
+      await logout(switchingProfile: true); // Listener releases the previous native player before switching.
+      await _store.clearLists(); await _store.clearResumeList();
+      _favorites.clear(); _recent.clear(); _resume.clear(); CatalogCache.clear();
+      final data = _profileData[profile.id];
+      if (data is Map) {
+        for (final key in ['xtream.favorites', 'xtream.recent', 'xtream.resume', 'device.session']) {
+          await _store.secure.write(key, data[key] as String?);
+        }
+      }
+      _favorites.addEntries(_store.favorites.map((i) => MapEntry(i.favoriteKey, i)));
+      _recent = _store.recent; _resume = _store.readResumeList();
+      _activeProfile = profile.id;
+      if (profile.source == ProfileSource.playlist) {
+        final channels = await M3uClient.load(profile.server, profile.playlistText, allowHttp: profile.allowHttp);
+        if (!profile.allowHttp && channels.any((c) => Uri.parse(c.directUrl!).scheme == 'http')) {
+          throw const FormatException('La lista contiene HTTP. Crea el perfil autorizándolo expresamente o usa enlaces HTTPS.');
+        }
+        _profileSource = ProfileSource.playlist; _allowExternalHttp = profile.allowHttp;
+        final origin = profile.server.isEmpty ? Uri.parse('https://playlist.invalid') : Uri.parse(profile.server);
+        _api = XtreamApi(baseUri: origin, username: '', password: '', allowHttp: profile.allowHttp);
+        _client = M3uClient(api: _api!, channels: channels);
+        _account = const XtreamAccount(auth: 1, status: 'Active');
+        _playbackBlock = null; _lastError = null;
+        notifyListeners(); return true;
+      }
+      return await login(XtreamCredentials(server: profile.server, username: profile.username,
+        password: profile.password, preferHttps: true), source: profile.source, allowHttp: profile.allowHttp);
+    } catch (_) {
+      _lastError = 'No se pudo abrir el perfil. Revisa el servidor, credenciales, lista y autorización HTTP.';
+      notifyListeners(); return false;
+    } finally { _switchingProfile = false; notifyListeners(); }
+  }
+
   final DeviceSession _devices;
   DateTime? _loginBlockedUntil;
   final Stopwatch _heartbeatAge = Stopwatch();
@@ -29,6 +117,7 @@ class AppState extends ChangeNotifier {
     return remaining != null && !remaining.isNegative ? remaining : null;
   }
   Future<void> preparePlayback({bool renewDevice = false}) async {
+    if (!usesDeviceSecurity) { if (!isLoggedIn) throw StateError('Sin sesión'); return; }
     final current = client;
     await _devices.attach(current, force: renewDevice);
     if (_client != current) throw const XtreamException('La sesión cambió. Abre de nuevo el canal.');
@@ -38,6 +127,7 @@ class AppState extends ChangeNotifier {
     }
   }
   Future<void> playbackHeartbeat() async {
+    if (!usesDeviceSecurity) return;
     final current = client;
     try {
       try { await _devices.heartbeat(current); }
@@ -63,6 +153,7 @@ class AppState extends ChangeNotifier {
   String playbackUrl(PlayableItem item) => api.resolvePlaybackUrl(item.url);
 
   Future<void> checkMediaDrm(PlayableItem item) async {
+    if (!usesDeviceSecurity) return;
     final id = item.streamId ?? item.source?.id;
     if (id == null) return;
     final kind = item.isLive ? 'live' : item.source?.kind == MediaKind.series ? 'series' : 'movie';
@@ -160,6 +251,13 @@ class AppState extends ChangeNotifier {
 
   // --------------------------------------------------------------- ciclo
   Future<void> restore() async {
+    _format = _store.streamFormat; _rememberSession = _store.rememberSession;
+    try {
+      final bundle = jsonDecode(_store.secure.values['profiles.state'] ?? '{}') as Map;
+      _profiles.addAll((bundle['profiles'] as List? ?? []).map((p) => IptvProfile.fromJson(Map<String, dynamic>.from(p as Map))));
+      _profileData.addAll(Map<String, dynamic>.from(bundle['data'] as Map? ?? {}));
+    } catch (_) { _lastError = 'No se pudieron leer los perfiles guardados.'; }
+    if (_profiles.isNotEmpty) { _restoring = false; notifyListeners(); return; }
     _format = _store.streamFormat;
     _rememberSession = _store.rememberSession;
     for (final item in _store.favorites) {
@@ -178,7 +276,7 @@ class AppState extends ChangeNotifier {
         final api = XtreamApi.fromCredentials(effective);
         final client = restoringClient = _newClient(api);
         final account = await client.authenticate();
-        api.configureStreams(account.serverInfo, secureStreamServer: _streamOverrideFor(api));
+        api.configureStreams(account.serverInfo, secureStreamServer: usesDeviceSecurity ? _streamOverrideFor(api) : '');
         if (account.isActive) {
           await _devices.attach(client);
           _playbackBlock = null;
@@ -213,7 +311,12 @@ class AppState extends ChangeNotifier {
 
   /// Devuelve `true` si la sesión se abrió correctamente; en caso contrario
   /// deja el motivo en [lastError].
-  Future<bool> login(XtreamCredentials credentials) async {
+  Future<bool> login(XtreamCredentials credentials, {ProfileSource source = ProfileSource.tvlister, bool allowHttp = false}) async {
+    if (!_switchingProfile && _activeProfile != null) {
+      await _snapshotProfile(); _activeProfile = null;
+      _favorites.clear(); _recent.clear(); _resume.clear();
+      await _store.clearLists(); await _store.clearResumeList();
+    }
     if (_loggingIn) return false;
     final remaining = loginRetryRemaining;
     if (remaining != null) { _lastError = 'Espera ${remaining.inSeconds + 1} segundos antes de volver a conectar.'; notifyListeners(); return false; }
@@ -222,19 +325,22 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     final XtreamCredentials effective = _effectiveCredentials(credentials);
+    final brand = Uri.tryParse(_config.config.xtream.server);
+    _profileSource = brand?.host == effective.baseUri.host ? ProfileSource.tvlister : source;
+    _allowExternalHttp = allowHttp && _profileSource != ProfileSource.tvlister;
     XtreamClient? client;
     try {
-      final api = XtreamApi.fromCredentials(effective);
+      final api = XtreamApi.fromCredentials(effective, allowHttp: allowHttpPlayback);
       client = _newClient(api);
       final account = await client.authenticate();
-      api.configureStreams(account.serverInfo, secureStreamServer: _streamOverrideFor(api));
+      api.configureStreams(account.serverInfo, secureStreamServer: usesDeviceSecurity ? _streamOverrideFor(api) : '');
       if (!account.isActive) {
         _lastError = account.statusText;
         client.dispose();
         return false;
       }
 
-      await _devices.attach(client);
+      if (usesDeviceSecurity) await _devices.attach(client);
       _playbackBlock = null;
       _client?.dispose();
       _credentials = effective;
@@ -307,7 +413,14 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> logout() async {
+  Future<void> logout({bool switchingProfile = false}) async {
+    if (!switchingProfile && _activeProfile != null) {
+      await _snapshotProfile();
+      final data = _profileData[_activeProfile];
+      if (data is Map) data.remove('device.session');
+      await _saveProfiles();
+    }
+    CatalogCache.clear();
     _heartbeatAge.stop();
     _heartbeatAge.reset();
     _playbackBlock ??= 'Sesión finalizada.';
@@ -352,6 +465,7 @@ class AppState extends ChangeNotifier {
       _favorites[item.favoriteKey] = item;
     }
     await _store.saveFavorites(_favorites.values);
+    await _snapshotProfile();
     notifyListeners();
   }
 
@@ -362,12 +476,14 @@ class AppState extends ChangeNotifier {
       _recent = _recent.sublist(0, 40);
     }
     await _store.saveRecent(_recent);
+    await _snapshotProfile();
     notifyListeners();
   }
 
   Future<void> clearRecent() async {
     _recent = <MediaItem>[];
     await _store.saveRecent(_recent);
+    await _snapshotProfile();
     notifyListeners();
   }
 
@@ -416,6 +532,7 @@ class AppState extends ChangeNotifier {
       _resume = _resume.sublist(0, 40);
     }
     await _store.saveResumeList(_resume);
+    await _snapshotProfile();
     notifyListeners();
   }
 
@@ -424,12 +541,14 @@ class AppState extends ChangeNotifier {
     _resume.removeWhere((ResumeEntry entry) => entry.key == key);
     if (_resume.length == before) return;
     await _store.saveResumeList(_resume);
+    await _snapshotProfile();
     notifyListeners();
   }
 
   Future<void> clearResume() async {
     _resume = <ResumeEntry>[];
     await _store.clearResumeList();
+    await _snapshotProfile();
     notifyListeners();
   }
 
@@ -441,8 +560,9 @@ class AppState extends ChangeNotifier {
       case MediaKind.live:
         return PlayableItem(
           title: item.name,
-          url: api.liveUrl(item.id, format: _format),
+          url: item.directUrl ?? api.liveUrl(item.id, format: _format),
           subtitle: 'En directo',
+          source: item,
           logo: api.resolveIcon(item.icon),
           isLive: true,
           streamId: item.id,

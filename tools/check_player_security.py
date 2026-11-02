@@ -9,11 +9,13 @@ assert 'EncryptedSharedPreferences.create' in store and 'AES256_GCM' in store
 assert '"PA-"' in store and 'MessageDigest.getInstance("SHA-256")' in store
 assert 'instanceFollowRedirects = false' in store
 assert 'useCaches = false' in store
-assert 'HttpsURLConnection' in store
+assert 'HttpURLConnection' in store
+assert 'call.argument<Boolean>("allowHttp") == true' in store
 manifest = text('android/app/src/main/AndroidManifest.xml')
-assert 'android:allowBackup="false"' in manifest and 'android:usesCleartextTraffic="false"' in manifest
+assert 'android:allowBackup="false"' in manifest
+assert 'android:usesCleartextTraffic="true"' in manifest
 config = ET.fromstring(text('android/app/src/main/res/xml/network_security_config.xml'))
-assert all(el.attrib.get('cleartextTrafficPermitted') != 'true' for el in config.iter())
+assert config.find('base-config').attrib['cleartextTrafficPermitted'] == 'true'
 assert all(el.attrib.get('src') != 'user' for el in config.iter('certificates'))
 api = text('lib/core/api/xtream_api.dart')
 assert "'X-Device-Token': deviceToken" in api
@@ -28,7 +30,11 @@ page = text('lib/features/player/player_texture_page.dart')
 assert "status == 429 || status == 503" in page and 'renewDevice:' in page
 assert 'Duration(seconds: 90)' in page and 'await _checkHeartbeat()' in page
 assert '_securityApp.removeListener(_sessionChanged)' in page
-assert "if (uri.scheme != 'https')" in text('lib/core/api/xtream_client.dart')
+assert "!(api.allowHttp && uri.scheme == 'http')" in text('lib/core/api/xtream_client.dart')
+state = text('lib/core/state/app_state.dart')
+assert '_profileSource != ProfileSource.tvlister' in state
+assert 'spec.uri.scheme == "http"' in player
+assert 'HTTP no autorizado para este perfil' in player
 print('OK: static secure storage, device headers, HTTPS, error/lifecycle gates and log checks')
 if not config.findall('.//pin-set'):
     print('PENDING: real panel hostname + distinct current/backup SPKI pins; do not call this security-closed.')

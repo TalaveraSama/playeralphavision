@@ -12,7 +12,7 @@ import java.util.UUID
 import android.os.Handler
 import android.os.Looper
 import java.net.URL
-import javax.net.ssl.HttpsURLConnection
+import java.net.HttpURLConnection
 import java.util.concurrent.Executors
 
 /** Never exports keys or uses plaintext as a credential fallback. */
@@ -27,19 +27,20 @@ class SecureSessionHost(private val context: Context, messenger: BinaryMessenger
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
     }
     private val allowed = setOf("xtream.server", "xtream.username", "xtream.password",
-        "xtream.remote_config", "xtream.favorites", "xtream.recent", "xtream.resume", "xtream.last_error", "device.session")
+        "xtream.remote_config", "xtream.favorites", "xtream.recent", "xtream.resume", "xtream.last_error", "device.session", "profiles.state")
     init {
         channel.setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
                     "request" -> {
                         val uri = URL(call.argument<String>("url") ?: "")
-                        require(uri.protocol == "https")
+                        require(uri.protocol == "https" || (uri.protocol == "http" && call.argument<Boolean>("allowHttp") == true))
                         val headers = call.argument<Map<String, String>>("headers") ?: emptyMap()
+                        val maxBytes = (call.argument<Number>("maxResponseBytes")?.toInt() ?: (64 * 1024 * 1024)).coerceIn(1, 64 * 1024 * 1024)
                         executor.execute {
-                            var connection: HttpsURLConnection? = null
+                            var connection: HttpURLConnection? = null
                             try {
-                                val conn = uri.openConnection() as HttpsURLConnection
+                                val conn = uri.openConnection() as HttpURLConnection
                                 connection = conn
                                 conn.connectTimeout = 8000
                                 conn.readTimeout = 12000
@@ -48,7 +49,17 @@ class SecureSessionHost(private val context: Context, messenger: BinaryMessenger
                                 headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
                                 val status = conn.responseCode
                                 val body = (if (status < 400) conn.inputStream else conn.errorStream)
-                                    ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
+                                    ?.use { input ->
+                                        val out = java.io.ByteArrayOutputStream()
+                                        val buffer = ByteArray(8192)
+                                        while (true) {
+                                            val n = input.read(buffer)
+                                            if (n < 0) break
+                                            require(out.size() + n <= maxBytes)
+                                            out.write(buffer, 0, n)
+                                        }
+                                        out.toString("UTF-8")
+                                    } ?: ""
                                 val responseHeaders = conn.headerFields.filterKeys { it != null }
                                     .mapKeys { it.key.lowercase(java.util.Locale.ROOT) }.mapValues { it.value.joinToString(",") }
                                 main.post { result.success(mapOf("status" to status, "body" to body, "headers" to responseHeaders)) }

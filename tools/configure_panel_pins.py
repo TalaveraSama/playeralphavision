@@ -21,7 +21,7 @@ def configure(domain, primary, backup, expires):
     if not date.today() < expiration <= date.today() + timedelta(days=365):
         raise ValueError('Expiration must be in the future and within 365 days')
     root = ET.Element('network-security-config')
-    base = ET.SubElement(root, 'base-config', cleartextTrafficPermitted='false')
+    base = ET.SubElement(root, 'base-config', cleartextTrafficPermitted='true')
     ET.SubElement(ET.SubElement(base, 'trust-anchors'), 'certificates', src='system')
     config = ET.SubElement(root, 'domain-config', cleartextTrafficPermitted='false')
     ET.SubElement(config, 'domain', includeSubdomains='false').text = domain.lower()
