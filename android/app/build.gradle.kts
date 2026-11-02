@@ -21,6 +21,19 @@ val releaseSigningReady = releasePropertiesFile.isFile && missingSigningKeys.isE
 
 // Covers both Flutter's assembleRelease/bundleRelease and aggregate Gradle tasks.
 gradle.taskGraph.whenReady {
+    val legacyDir = file("src/main/kotlin/com/xtreamplayer/xtream_player")
+    val obsoleteSources = listOf("Media3TexturePlayer.kt", "Media3PlayerHost.kt")
+        .filter { legacyDir.resolve(it).isFile }
+    if (obsoleteSources.isNotEmpty() && allTasks.any {
+            it.project == project && it.name.startsWith("compile") && it.name.endsWith("Kotlin")
+        }) {
+        throw GradleException(
+            "Mixed source versions: obsolete Media3 files remain: ${obsoleteSources.joinToString()}. " +
+                "Use admin_panel/Generar APK universal.cmd to back them up, or extract the full ZIP " +
+                "into a NEW folder. Do not restore Media3 dependencies."
+        )
+    }
+
     if (allTasks.any { it.project == project && it.name.contains("release", ignoreCase = true) } &&
         !releaseSigningReady) {
         throw GradleException(

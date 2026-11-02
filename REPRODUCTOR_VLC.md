@@ -1,3 +1,5 @@
+> **Corrección 1.2.57+1061:** si actualizaste extrayendo un ZIP encima, el generador renombra automáticamente los dos adaptadores Media3 retirados a copias `.bak-vlc-<GUID>` antes de compilar. No toca tu configuración, identificador ni firma. El CMD universal ya no anuncia éxito cuando falla. Para una actualización limpia, extrae el ZIP en una carpeta nueva y conserva tus archivos privados de configuración/firma; no copies todo el directorio Kotlin antiguo. No se compiló un APK aquí.
+
 # 1.2.56+1060 — VLC principal (vista previa de código fuente)
 
 ## Implementación

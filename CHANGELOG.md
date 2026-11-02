@@ -1,3 +1,7 @@
+# 1.2.57+1061 — Corrección al actualizar VLC por ZIP
+
+Al superponer un ZIP podían quedar `Media3TexturePlayer.kt` y `Media3PlayerHost.kt` de una versión anterior, aunque sus dependencias ya se retiraron. El generador ahora comprueba la presencia de los tres archivos VLC y renombra esos dos archivos antiguos como copias `.bak-vlc-<GUID>` antes de compilar, sin borrar modificaciones, configuración ni firma. Gradle también avisa claramente si se intenta compilar directamente una mezcla de versiones. El CMD universal conserva el código de error y ya no anuncia éxito cuando falla. No se restauran las dependencias Media3. Checks estáticos realizados; Windows/Gradle/APK no ejecutados aquí.
+
 # 1.2.56+1060 — VLC principal (2026-11-02)
 
 Reemplazo independiente sobre LibVLC oficial 3.6.3, textura de vídeo completa, controles existentes, audio/SPU, decodificación auto/hardware/software y reserva HLS 10/20/30 s. Puente loopback para conservar TLS Android, tokens por origen exacto y errores HTTP. Se conservan perfiles y seguridad sin integración DRM. Tests JVM añadidos; sintaxis y checks estáticos ejecutados, pero no hay compilación ni prueba de dispositivo/APK. ExoPlayer puede permanecer para anuncios. Detalles: [REPRODUCTOR_VLC.md](REPRODUCTOR_VLC.md).

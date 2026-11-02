@@ -307,6 +307,23 @@ $logPath = Join-Path $projectRoot 'build\whitelabel-build.log'
 try {
   New-Item -ItemType Directory -Force -Path (Split-Path -Parent $logPath) | Out-Null
 
+  # A ZIP overlay does not remove files deleted from the new source tree.
+  # Preserve only the two retired adapters as non-.kt backups before Gradle.
+  $nativeDir = Join-Path $projectRoot 'android\app\src\main\kotlin\com\xtreamplayer\xtream_player'
+  foreach ($required in @('VlcPlayerHost.kt', 'VlcTexturePlayer.kt', 'VlcStreamGateway.kt')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $nativeDir $required) -PathType Leaf)) {
+      Fail "Actualizacion VLC incompleta: falta $required. Extrae el ZIP completo en una carpeta nueva."
+    }
+  }
+  foreach ($obsolete in @('Media3TexturePlayer.kt', 'Media3PlayerHost.kt')) {
+    $obsoletePath = Join-Path $nativeDir $obsolete
+    if (Test-Path -LiteralPath $obsoletePath -PathType Leaf) {
+      $backupName = $obsolete + '.bak-vlc-' + [Guid]::NewGuid().ToString('N')
+      Rename-Item -LiteralPath $obsoletePath -NewName $backupName -ErrorAction Stop
+      Warn "Fuente antigua retirada de compilacion: $obsolete (copia: $backupName)."
+    }
+  }
+
   Info 'Descargando dependencias...'
   $pubLog = Join-Path $projectRoot 'build\whitelabel-pub-get.log'
   $code = Invoke-FlutterLogged -Arguments @('pub', 'get') -LogPath $pubLog
