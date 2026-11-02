@@ -1,3 +1,4 @@
+import '../models/xtream_account.dart';
 import '../models/stream_format.dart';
 import '../models/xtream_credentials.dart';
 import '../utils/format_utils.dart';
@@ -31,6 +32,26 @@ class XtreamApi {
   final String userAgent;
   final String streamToken;
   String deviceToken = '';
+
+  XtreamApi? _streamApi;
+
+  /// API remains on the login host. Video follows the origin advertised by the panel.
+  void configureStreams(XtreamServerInfo info) {
+    final advertised = info.url?.trim() ?? '';
+    if (advertised.isEmpty) return;
+    final protocol = (info.protocol ?? baseUri.scheme).toLowerCase();
+    if (protocol != 'http' && protocol != 'https') return;
+    final uri = Uri.tryParse(advertised.contains('://') ? advertised : '$protocol://$advertised');
+    if (uri == null || uri.host.isEmpty || uri.userInfo.isNotEmpty ||
+        !['http', 'https'].contains(uri.scheme)) return;
+    final explicitOrigin = advertised.contains('://');
+    final port = int.tryParse((uri.scheme == 'https' ? info.httpsPort ?? info.port : info.port) ?? '');
+    final target = !uri.hasPort && !explicitOrigin && port != null && port > 0 && port <= 65535
+        ? uri.replace(port: port) : uri;
+    _streamApi = XtreamApi(baseUri: target, username: username, password: password,
+      userAgent: userAgent, streamToken: streamToken);
+  }
+  String _streamBuild(List<String> segments) => (_streamApi ?? this)._build(segments);
 
   /// Segmentos de autenticación: con token usa `/live/{token}/...`,
   /// sin token usa `/live/{usuario}/{clave}/...`.
@@ -116,15 +137,15 @@ class XtreamApi {
 
   /// `/live/{usuario}/{clave}/{stream_id}.{ext}`
   String liveUrl(String streamId, {StreamFormat format = StreamFormat.auto}) =>
-      _build(<String>['live', ..._auth, '$streamId.${format.liveExtension}']);
+      _streamBuild(<String>['live', ..._auth, '$streamId.${format.liveExtension}']);
 
   /// `/movie/{usuario}/{clave}/{stream_id}.{ext}`
-  String movieUrl(String streamId, {String? extension}) => _build(<String>[
+  String movieUrl(String streamId, {String? extension}) => _streamBuild(<String>[
         'movie', ..._auth, '$streamId.${_cleanExtension(extension, 'mp4')}',
       ]);
 
   /// `/series/{usuario}/{clave}/{episode_id}.{ext}`
-  String seriesUrl(String episodeId, {String? extension}) => _build(<String>[
+  String seriesUrl(String episodeId, {String? extension}) => _streamBuild(<String>[
         'series', ..._auth, '$episodeId.${_cleanExtension(extension, 'mkv')}',
       ]);
 
@@ -138,7 +159,7 @@ class XtreamApi {
     required int durationMinutes,
     required DateTime start,
   }) =>
-      _assemble(<String>[
+      (_streamApi ?? this)._assemble(<String>[
         'timeshift',
         ..._auth.map(Uri.encodeComponent),
         '$durationMinutes',

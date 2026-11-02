@@ -52,8 +52,15 @@ class SecureSessionHost(private val context: Context, messenger: BinaryMessenger
                                 val responseHeaders = conn.headerFields.filterKeys { it != null }
                                     .mapKeys { it.key.lowercase(java.util.Locale.ROOT) }.mapValues { it.value.joinToString(",") }
                                 main.post { result.success(mapOf("status" to status, "body" to body, "headers" to responseHeaders)) }
-                            } catch (_: Exception) {
-                                main.post { result.error("NETWORK", "No se pudo conectar de forma segura", null) }
+                            } catch (error: Exception) {
+                                val code = when (error) {
+                                    is javax.net.ssl.SSLException -> "TLS_CERTIFICATE"
+                                    is java.net.UnknownHostException -> "DNS"
+                                    is java.net.SocketTimeoutException -> "TIMEOUT"
+                                    is java.net.ConnectException -> "CONNECTION"
+                                    else -> "NETWORK"
+                                }
+                                main.post { result.error(code, "No se pudo conectar con el panel", null) }
                             } finally { connection?.disconnect() }
                         }
                     }

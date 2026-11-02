@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 import '../models/epg_entry.dart';
 import '../models/media_item.dart';
@@ -202,12 +203,24 @@ class XtreamClient {
         '${error.osError == null ? '' : ' (${error.osError!.message})'}. '
         'Comprueba la dirección y el puerto.',
       );
+    } on PlatformException catch (error) {
+      final message = switch (error.code) {
+        'TLS_CERTIFICATE' => 'No se pudo verificar el certificado HTTPS del panel. Revisa el dominio, la cadena del certificado y la fecha del equipo.',
+        'DNS' => 'No se pudo resolver el dominio del panel. Revisa la dirección y la conexión.',
+        'TIMEOUT' => 'El panel no respondió a tiempo. Revisa su disponibilidad y el puerto HTTPS.',
+        'CONNECTION' => 'No se pudo conectar al puerto HTTPS del panel. Revisa el servidor y el firewall.',
+        _ => 'No se pudo conectar con el panel de forma segura. Revisa la configuración del servidor.',
+      };
+      throw XtreamException(message, code: error.code);
     } on http.ClientException {
       throw const XtreamException('No se pudo conectar con el panel.');
     } catch (_) {
       throw const XtreamException('No se pudo establecer una conexión segura con el panel.');
     }
 
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      throw const XtreamException('La API del panel redirige a otra dirección. Configura su dirección HTTPS final; no se reenviaron credenciales.', statusCode: 400, code: 'api_redirect');
+    }
     if (response.statusCode == 429) {
       var seconds = int.tryParse(response.headers['retry-after'] ?? '') ?? 600;
       try {

@@ -1,7 +1,7 @@
 name: xtream_player
 description: "Cliente OTT/IPTV Android / Android TV con ExoPlayer con el diseño NOVA para la API de Xtream Codes y paneles XUI.one."
 publish_to: "none"
-version: 1.2.50+1054
+version: 1.2.51+1055
 environment:
   sdk: ">=3.4.0 <4.0.0"
 

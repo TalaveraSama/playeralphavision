@@ -169,6 +169,7 @@ class AppState extends ChangeNotifier {
         final api = XtreamApi.fromCredentials(effective);
         final client = restoringClient = _newClient(api);
         final account = await client.authenticate();
+        api.configureStreams(account.serverInfo);
         if (account.isActive) {
           await _devices.attach(client);
           _playbackBlock = null;
@@ -217,6 +218,7 @@ class AppState extends ChangeNotifier {
       final api = XtreamApi.fromCredentials(effective);
       client = _newClient(api);
       final account = await client.authenticate();
+      api.configureStreams(account.serverInfo);
       if (!account.isActive) {
         _lastError = account.statusText;
         client.dispose();
