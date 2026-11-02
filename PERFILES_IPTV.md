@@ -1,3 +1,5 @@
+> Actualización 1.2.55: la integración DRM descrita históricamente se retiró. Consulta `SEGURIDAD_SIN_DRM.md` para el comportamiento vigente.
+
 # 1.2.54+1058 — Perfiles IPTV (PREVIEW)
 
 ## Uso

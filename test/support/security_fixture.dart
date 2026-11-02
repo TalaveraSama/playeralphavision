@@ -16,7 +16,6 @@ XtreamClient testPanelClient(XtreamApi api) => XtreamClient(api: api,
         'device_token': 'fixture-not-real', 'token_ttl_seconds': 2592000}), 200);
       case 'heartbeat': return http.Response(jsonEncode({'status': 'active',
         'server_time': 100, 'exp_date': '200'}), 200);
-      case 'get_drm': return http.Response('{"drm_enabled":false,"streams":[]}', 200);
     }
     final local = http.Client();
     try { return await local.get(request.url.replace(scheme: 'http'), headers: request.headers); }

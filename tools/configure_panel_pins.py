@@ -2,6 +2,7 @@
 Run BEFORE compiling, using two real independent public keys maintained by the operator.
 """
 import argparse
+from copy import deepcopy
 import base64
 from datetime import date, timedelta
 from pathlib import Path
@@ -32,6 +33,21 @@ def configure(domain, primary, backup, expires):
     return ET.tostring(root, encoding='unicode', xml_declaration=True) + '\n'
 
 
+def preserve_other_domains(generated, previous, changed_domain):
+    """Rotating panel pins must not remove the video's HTTPS-only policy."""
+    root = ET.fromstring(generated)
+    existing = ET.fromstring(previous)
+    for config in existing.findall('domain-config'):
+        clone = deepcopy(config)
+        for domain in list(clone.findall('domain')):
+            if (domain.text or '').strip().lower() == changed_domain.lower():
+                clone.remove(domain)
+        if clone.findall('domain'):
+            root.append(clone)
+    ET.indent(root)
+    return ET.tostring(root, encoding='unicode', xml_declaration=True) + '\n'
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for arg in ('domain', 'primary', 'backup', 'expires'):
@@ -39,5 +55,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     text = configure(args.domain, args.primary, args.backup, args.expires)
     path = Path(__file__).resolve().parents[1] / 'android/app/src/main/res/xml/network_security_config.xml'
+    if path.exists():
+        text = preserve_other_domains(text, path.read_text(), args.domain)
     path.write_text(text)
     print('Public pins configured. Verify both keys and TLS connections on Android before distributing.')

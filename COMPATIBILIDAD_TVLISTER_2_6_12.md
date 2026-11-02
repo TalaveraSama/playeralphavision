@@ -1,3 +1,5 @@
+> Actualización 1.2.55: la integración DRM descrita históricamente se retiró. Consulta `SEGURIDAD_SIN_DRM.md` para el comportamiento vigente.
+
 # 1.2.53+1057 — Revisión de TVLister v2.6.12
 
 Se revisaron las notas de https://github.com/TalaveraSama/tvlister24-7/releases/tag/v2.6.12 y `server/iptvApi.js` de esa etiqueta.

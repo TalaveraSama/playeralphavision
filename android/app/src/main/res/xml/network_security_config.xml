@@ -3,4 +3,9 @@
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors><certificates src="system" /></trust-anchors>
     </base-config>
+    <!-- External profiles can opt into HTTP, never these brand origins. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">tvadmin.alphadigitalnic.xyz</domain>
+        <domain includeSubdomains="false">live-stream.alphadigitalnic.xyz</domain>
+    </domain-config>
 </network-security-config>

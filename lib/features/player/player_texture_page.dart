@@ -219,7 +219,6 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       if (Uri.tryParse(playbackUrl)?.scheme != 'https' && !(_securityApp.allowHttpPlayback && Uri.tryParse(playbackUrl)?.scheme == 'http')) {
         throw const XtreamException('Este canal necesita una URL HTTPS válida del proveedor.', statusCode: 400);
       }
-      await _securityApp.checkMediaDrm(item);
       if (!mounted || version != _loadVersion || !_foreground || _authorizationBlocked) return;
       await channel?.invokeMethod('setUrl', <String, dynamic>{'url': playbackUrl, 'allowHttp': _securityApp.allowHttpPlayback, 'isHls': item.source?.containerExtension == 'm3u8', 'headers': _securityApp.headers, 'isLive': item.isLive});
     if (!mounted || version != _loadVersion || !_foreground) return;
@@ -273,11 +272,11 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     final status = (data['status'] as num?)?.toInt();
     final code = data['code'];
     if (status == 403 && !_securityRetryUsed &&
-        (['device_required', 'device_invalid'].contains(code) || data['drm'] == true)) {
+        ['device_required', 'device_invalid'].contains(code)) {
       _securityRetryUsed = true;
       _cancelPlaybackTimers();
       try {
-        await _securityApp.preparePlayback(renewDevice: data['drm'] != true);
+        await _securityApp.preparePlayback(renewDevice: true);
         if (mounted && _foreground && !_authorizationBlocked) await _load(_current);
       } catch (_) { await _securityApp.blockPlayback('No se pudo autorizar este aparato. Contacta con tu proveedor.'); }
       return;

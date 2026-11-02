@@ -1,3 +1,5 @@
+> Actualización 1.2.55: la integración DRM descrita históricamente se retiró. Consulta `SEGURIDAD_SIN_DRM.md` para el comportamiento vigente.
+
 # 1.2.50+1054 — Integración de seguridad TVLister (PREVIEW)
 
 Contrato seguido: [SEGURIDAD_PLAYER_APP_INDICACIONES.md](https://github.com/TalaveraSama/tvlister24-7/blob/arena/85cc9902-tvlister24-7/docs/SEGURIDAD_PLAYER_APP_INDICACIONES.md), consultado para esta implementación.

@@ -116,9 +116,8 @@ class Media3TexturePlayer(
                         retrySeconds = ((format.parse(retry)?.time ?: base) - base) / 1000
                     } catch (_: Exception) { }
                 }
-                val drm = http?.dataSpec?.uri?.path?.contains("/drm/") == true
                 channel.invokeMethod("onError", mapOf("status" to http?.responseCode,
-                    "code" to if (code in allowed) code else "", "drm" to drm,
+                    "code" to if (code in allowed) code else "",
                     "retryAfter" to maxOf(1L, retrySeconds ?: 600L)))
             }
 

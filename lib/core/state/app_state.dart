@@ -152,23 +152,6 @@ class AppState extends ChangeNotifier {
   }
   String playbackUrl(PlayableItem item) => api.resolvePlaybackUrl(item.url);
 
-  Future<void> checkMediaDrm(PlayableItem item) async {
-    if (!usesDeviceSecurity) return;
-    final id = item.streamId ?? item.source?.id;
-    if (id == null) return;
-    final kind = item.isLive ? 'live' : item.source?.kind == MediaKind.series ? 'series' : 'movie';
-    final data = await client.securityAction('get_drm');
-    if (data['drm_enabled'] != true) return;
-    final streams = data['streams'];
-    if (streams is! List) return;
-    for (final stream in streams) {
-      if (stream is! Map || '${stream['stream_id']}' != id || (stream['kind'] != null && stream['kind'] != kind)) continue;
-      if (stream['requires_eme'] == true || ['clearkey', 'widevine', 'playready'].contains(stream['drm_type'])) {
-        throw const XtreamException('Este contenido requiere un reproductor compatible con su DRM.', statusCode: 412);
-      }
-      // AES manifests/keys are fetched by ExoPlayer in memory, never persisted here.
-    }
-  }
   Future<void> blockPlayback(String message) async {
     _playbackBlock = message;
     notifyListeners(); // The mounted player stops before credentials are cleared.
