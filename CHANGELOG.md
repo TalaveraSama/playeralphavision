@@ -1,3 +1,13 @@
+# 1.2.58+1062 — Diagnóstico y protección de inicio de VLC
+
+Se reportó cierre total al abrir un stream. **No se dispone de logcat ni de un dispositivo para confirmar la causa.** Esta versión añade conservación explícita de las clases VideoLAN en R8/JNI y captura de LinkageError/RuntimeException al crear VLC: un error de carga Java/JNI debe devolver un error de plataforma en lugar de escapar del MethodChannel. Flutter muestra el fallo de inicialización. Se usa ApplicationContext y se crea la textura después de cargar el motor. Esto no captura SIGSEGV/SIGABRT ni garantiza corregir el cierre reportado.
+
+Se volvió a inspeccionar decoded-xc: `vlc_video_layout.xml` contempla SurfaceView de vídeo/subtítulos y TextureView; sus bibliotecas incluyen libvlc/libvlcjni y otros motores. No se encontró en el árbol publicado un proyecto fuente Java/Kotlin de reproductor que se pueda incorporar directamente. No se mezclaron sus .so antiguos con las clases de LibVLC 3.6.3: esa mezcla no establece compatibilidad JNI/ABI ni derechos de redistribución. La implementación sigue usando LibVLC oficial; no es una importación del reproductor completo de decoded-xc.
+
+Ejecutar `admin_panel\Generar APK universal.cmd` con la misma configuración y firma. Si persiste, conectar solo el equipo afectado con ADB autorizado, reproducir el fallo y ejecutar `admin_panel\Diagnosticar cierre VLC.cmd`. Revisar `build/vlc-crash.log` y ocultar usuarios, claves, tokens y URLs de cuenta antes de compartir. Informar modelo, Android/Fire OS y si ocurre en todos los streams. No desinstalar para probar: se puede actualizar con la misma firma.
+
+Checks sintácticos/estáticos únicamente; no se ejecutaron Flutter/Gradle/Windows ni se produjo un APK aquí. Se requiere prueba real de carga, reproducción, subtítulos y ciclo de vida.
+
 # 1.2.57+1061 — Corrección al actualizar VLC por ZIP
 
 Al superponer un ZIP podían quedar `Media3TexturePlayer.kt` y `Media3PlayerHost.kt` de una versión anterior, aunque sus dependencias ya se retiraron. El generador ahora comprueba la presencia de los tres archivos VLC y renombra esos dos archivos antiguos como copias `.bak-vlc-<GUID>` antes de compilar, sin borrar modificaciones, configuración ni firma. Gradle también avisa claramente si se intenta compilar directamente una mezcla de versiones. El CMD universal conserva el código de error y ya no anuncia éxito cuando falla. No se restauran las dependencias Media3. Checks estáticos realizados; Windows/Gradle/APK no ejecutados aquí.

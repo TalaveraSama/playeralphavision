@@ -188,12 +188,14 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
       if (!mounted) return;
       setState(() => _textureId = textureId);
       await _load(_current);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         setState(() { _unavailable = true; _buffering = false; });
         _watchdog?.cancel();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No se pudo iniciar VLC. Vuelve a abrir el canal.')));
+        final message = error is PlatformException && error.code == 'VLC_NATIVE_LOAD'
+            ? 'No se pudo cargar VLC nativo en este dispositivo. Revisa el registro del cierre y la arquitectura del APK.'
+            : 'No se pudo iniciar VLC. Revisa el registro de inicialización.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }

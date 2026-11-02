@@ -25,13 +25,13 @@ class VlcTexturePlayer(
     subtitleSize: Int,
 ) : MethodChannel.MethodCallHandler, IVLCVout.OnNewVideoLayoutListener {
     private val main = Handler(Looper.getMainLooper())
-    private val entry = textureRegistry.createSurfaceTexture()
     private val channel = MethodChannel(messenger, "vlc_player_$viewId")
     private val color = try { subtitleColor.removePrefix("#").toLong(16).toInt() and 0xffffff } catch (_: Exception) { 0xffffff }
-    private val lib = LibVLC(context, arrayListOf("--quiet", "--verbose=-1", "--no-video-title-show",
+    private val lib = LibVLC(context.applicationContext, arrayListOf("--quiet", "--verbose=-1", "--no-video-title-show",
         "--network-caching=300", "--live-caching=300", "--adaptive-maxbuffer=${if (bufferSeconds in listOf(10,20,30)) bufferSeconds else 10}",
         "--freetype-color=$color", "--freetype-fontsize=${subtitleSize.coerceIn(14,40)}"))
     private val player = MediaPlayer(lib)
+    private val entry = textureRegistry.createSurfaceTexture()
     private var gateway: VlcStreamGateway? = null
     private var source = ""
     private var headers = emptyMap<String, String>()

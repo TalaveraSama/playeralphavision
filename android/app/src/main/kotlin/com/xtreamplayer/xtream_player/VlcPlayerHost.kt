@@ -1,6 +1,7 @@
 package com.xtreamplayer.xtream_player
 
 import android.content.Context
+import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -52,7 +53,21 @@ class VlcPlayerHost(
                 val id = nextId++
                 val mode = call.argument<String>("decoderMode") ?: "auto"
                 val bufferSeconds = call.argument<Number>("bufferSeconds")?.toInt() ?: 10
-                val player = VlcTexturePlayer(context, messenger, textureRegistry, id, mode, bufferSeconds, call.argument<String>("subtitleColor") ?: "#FFFFFF", call.argument<Number>("subtitleSize")?.toInt() ?: 22)
+                val player = try {
+                    VlcTexturePlayer(context, messenger, textureRegistry, id, mode, bufferSeconds,
+                        call.argument<String>("subtitleColor") ?: "#FFFFFF",
+                        call.argument<Number>("subtitleSize")?.toInt() ?: 22)
+                } catch (error: LinkageError) {
+                    // MethodChannel catches RuntimeException, not JNI load/link errors.
+                    // Creation has not received a stream URL or any account headers.
+                    Log.e("AlphaVisionVLC", "Native library initialization failed", error)
+                    result.error("VLC_NATIVE_LOAD", "No se pudo cargar la biblioteca nativa VLC.", error.javaClass.simpleName)
+                    return
+                } catch (error: RuntimeException) {
+                    Log.e("AlphaVisionVLC", "Player initialization failed", error)
+                    result.error("VLC_INIT", "No se pudo inicializar VLC.", error.javaClass.simpleName)
+                    return
+                }
                 if (suspended) player.setAppVisible(false)
                 players[id] = player
                 result.success(mapOf("id" to id, "textureId" to player.textureId))
