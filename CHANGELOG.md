@@ -1,3 +1,7 @@
+# 1.2.61+1065 — Priorizar estabilidad de VLC
+
+Caché de red/live elevada de 300 ms a 2000 ms con una constante compartida para instancia/medio. Se mantienen reserva HLS 10/20/30 s, seguridad, firma y único APK universal. Puede aumentar el tiempo de arranque. «App no instalada» en Fire TV sigue sin causa confirmada: guía ADB para identificar SDK, firma, versionCode o ABI sin desinstalar ni cambiar identidad. No se baja minSdk 24 ni se afirma compatibilidad con Fire OS 5. Checks estáticos/sintácticos solamente; no APK ni reproducción/instalación real. Ver [FIRE_TV_INSTALACION.md](FIRE_TV_INSTALACION.md).
+
 # 1.2.60+1064 — Argumentos de arquitectura universal
 
 Corregido `Unsupported Flutter argument: android-arm,android-arm64,android-x64`: el validador permite listas de tokens separadas por comas y sigue rechazando sintaxis de shell. Prueba Windows ampliada para verificar la lista recibida por un Flutter simulado y rechazo de entradas inseguras/malformadas. La línea de versión de Flutter ignora líneas vacías iniciales. Checks estáticos y patrón de validación comprobados; no se ejecutaron Windows/Flutter/Gradle ni se generó APK aquí. Se mantiene un único APK universal por defecto. Esto no confirma resuelto el cierre de VLC reportado.

@@ -24,11 +24,15 @@ class VlcTexturePlayer(
     subtitleColor: String,
     subtitleSize: Int,
 ) : MethodChannel.MethodCallHandler, IVLCVout.OnNewVideoLayoutListener {
+    companion object {
+        // Stability profile: tolerate short network variations instead of minimum latency.
+        private const val STABLE_NETWORK_CACHE_MS = 2000
+    }
     private val main = Handler(Looper.getMainLooper())
     private val channel = MethodChannel(messenger, "vlc_player_$viewId")
     private val color = try { subtitleColor.removePrefix("#").toLong(16).toInt() and 0xffffff } catch (_: Exception) { 0xffffff }
     private val lib = LibVLC(context.applicationContext, arrayListOf("--quiet", "--verbose=-1", "--no-video-title-show",
-        "--network-caching=300", "--live-caching=300", "--adaptive-maxbuffer=${if (bufferSeconds in listOf(10,20,30)) bufferSeconds else 10}",
+        "--network-caching=$STABLE_NETWORK_CACHE_MS", "--live-caching=$STABLE_NETWORK_CACHE_MS", "--adaptive-maxbuffer=${if (bufferSeconds in listOf(10,20,30)) bufferSeconds else 10}",
         "--freetype-color=$color", "--freetype-fontsize=${subtitleSize.coerceIn(14,40)}"))
     private val player = MediaPlayer(lib)
     private val entry = textureRegistry.createSurfaceTexture()
@@ -110,7 +114,8 @@ class VlcTexturePlayer(
                 else -> Unit
             }
             if (isHls || Uri.parse(source).path?.lowercase()?.endsWith(".m3u8") == true) media.addOption(":demux=adaptive")
-            media.addOption(":network-caching=300")
+            media.addOption(":network-caching=$STABLE_NETWORK_CACHE_MS")
+            media.addOption(":live-caching=$STABLE_NETWORK_CACHE_MS")
             player.setMedia(media)
             media.release()
             loaded = true

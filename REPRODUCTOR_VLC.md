@@ -23,7 +23,7 @@ Checks sintácticos/estáticos únicamente; no se ejecutaron Flutter/Gradle/Wind
 
 ## Búfer y compatibilidad
 
-Las opciones **10/20/30 segundos** configuran `adaptive-maxbuffer`, la reserva máxima del demultiplexor adaptativo HLS de VLC; **no son una espera obligatoria al iniciar**. La caché de red/live es independiente, de 300 ms. El máximo no representa el total de memoria ni aplica igual a archivos progresivos u otros protocolos. No se ha medido una mejora de velocidad o RAM frente a ExoPlayer.
+Las opciones **10/20/30 segundos** configuran `adaptive-maxbuffer`, la reserva máxima del demultiplexor adaptativo HLS de VLC; **no son una espera obligatoria al iniciar**. La caché de red/live es independiente, de 2000 ms desde 1.2.61 (perfil de estabilidad). El máximo no representa el total de memoria ni aplica igual a archivos progresivos u otros protocolos. No se ha medido una mejora de velocidad o RAM frente a ExoPlayer.
 
 El puente está orientado a **HLS y archivos HTTP(S)**. DASH, UDP, RTSP y otras formas de entrada no quedan certificados por este cambio. Se deben probar directos TS/HLS, MP4/MKV, rangos/seek, VOD, audios alternativos y manifiestos con claves/segmentos en CDN. La app no transforma un stream protegido por DRM en un stream libre.
 
