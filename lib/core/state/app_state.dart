@@ -67,6 +67,7 @@ class AppState extends ChangeNotifier {
     if (id == null) return;
     final kind = item.isLive ? 'live' : item.source?.kind == MediaKind.series ? 'series' : 'movie';
     final data = await client.securityAction('get_drm');
+    if (data['drm_enabled'] != true) return;
     final streams = data['streams'];
     if (streams is! List) return;
     for (final stream in streams) {

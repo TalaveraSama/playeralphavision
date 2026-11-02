@@ -6,7 +6,7 @@ void main() {
   XtreamApi api() => XtreamApi(baseUri: Uri.parse('https://panel.example'), username: 'demo', password: 'fake');
   test('video uses advertised HTTPS host, API and EPG stay on the login host', () {
     final a = api();
-    a.configureStreams(const XtreamServerInfo(url: 'video.example', protocol: 'https', port: '80', httpsPort: '443'));
+    a.configureStreams(const XtreamServerInfo(url: 'video.example', protocol: 'https', port: '443', httpsPort: '443'));
     expect(a.apiUri().host, 'panel.example');
     expect(a.xmltvUri.host, 'panel.example');
     expect(a.playlistUri.host, 'panel.example');
@@ -45,6 +45,29 @@ void main() {
     a.configureStreams(const XtreamServerInfo(url: 'video.example', protocol: 'http', port: '80', httpsPort: '443'));
     expect(Uri.parse(a.liveUrl('1')).scheme, 'https');
     expect(Uri.parse(a.liveUrl('1')).port, 443);
+  });
+  for (final port in [443, 8443, 2053, 2083, 2087, 2096]) {
+    test('TVLister v2.6.12 active TLS port $port is not overwritten by https_port 443', () {
+      for (final override in ['', 'https://video.example']) {
+        final a = api();
+        a.configureStreams(XtreamServerInfo(url: 'video.example', protocol: 'https',
+          port: '$port', httpsPort: '443'), secureStreamServer: override);
+        final uri = Uri.parse(a.liveUrl('1'));
+        expect(uri.scheme, 'https');
+        expect(uri.port, port);
+        expect(a.apiUri().host, 'panel.example');
+      }
+    });
+  }
+  test('legacy HTTP metadata on TLS 8443 is upgraded without silently selecting 443', () {
+    for (final override in ['', 'https://video.example']) {
+      final a = api();
+      a.configureStreams(const XtreamServerInfo(url: 'video.example', protocol: 'http',
+        port: '8443', httpsPort: '443'), secureStreamServer: override);
+      final uri = Uri.parse(a.liveUrl('1'));
+      expect(uri.scheme, 'https');
+      expect(uri.port, 8443);
+    }
   });
   test('invalid secure override is rejected, not downgraded to HTTP', () {
     final a = api();

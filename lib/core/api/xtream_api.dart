@@ -41,11 +41,21 @@ class XtreamApi {
     _streamApi = null;
     _advertisedHttpPort = int.tryParse(info.port ?? '');
     if (secureStreamServer.trim().isNotEmpty) {
-      final target = Uri.tryParse(secureStreamServer.trim());
+      var target = Uri.tryParse(secureStreamServer.trim());
       if (target == null || target.scheme != 'https' || target.host.isEmpty ||
           target.userInfo.isNotEmpty || target.hasQuery || target.hasFragment ||
           (target.path.isNotEmpty && target.path != '/')) {
         throw const FormatException('Configura streamServer como un origen HTTPS válido, sin rutas ni credenciales.');
+      }
+      // TVLister 2.6.12 reports the active TLS port in `port`, while
+      // `https_port` may still be a hardcoded 443. Preserve the active origin.
+      final advertised = info.url?.trim() ?? '';
+      final advertisedUri = Uri.tryParse(advertised.contains('://') ? advertised : 'https://$advertised');
+      final activePort = int.tryParse(info.port ?? '');
+      if (advertisedUri?.host == target.host && (info.protocol?.toLowerCase() == 'https' ||
+          const {443, 8443, 2053, 2083, 2087, 2096}.contains(activePort))) {
+        final port = advertisedUri!.hasPort ? advertisedUri.port : activePort;
+        if (port != null && port > 0 && port <= 65535) target = target.replace(port: port);
       }
       _streamApi = XtreamApi(baseUri: target, username: username, password: password,
         userAgent: userAgent, streamToken: streamToken);
@@ -59,12 +69,14 @@ class XtreamApi {
     if (uri == null || uri.host.isEmpty || uri.userInfo.isNotEmpty ||
         !['http', 'https'].contains(uri.scheme)) return;
     final explicitOrigin = advertised.contains('://');
-    final port = int.tryParse((uri.scheme == 'https' ? info.httpsPort ?? info.port : info.port) ?? '');
+    final port = int.tryParse((uri.scheme == 'https' ? info.port ?? info.httpsPort : info.port) ?? '');
     var target = !uri.hasPort && !explicitOrigin && port != null && port > 0 && port <= 65535
         ? uri.replace(port: port) : uri;
     final tlsPort = int.tryParse(info.httpsPort ?? '');
     if (target.scheme == 'http' && tlsPort != null && tlsPort > 0 && tlsPort <= 65535) {
-      target = target.replace(scheme: 'https', port: tlsPort);
+      final activePort = int.tryParse(info.port ?? '');
+      final port = const {443, 8443, 2053, 2083, 2087, 2096}.contains(activePort) ? activePort! : tlsPort;
+      target = target.replace(scheme: 'https', port: port);
     }
     _streamApi = XtreamApi(baseUri: target, username: username, password: password,
       userAgent: userAgent, streamToken: streamToken);
