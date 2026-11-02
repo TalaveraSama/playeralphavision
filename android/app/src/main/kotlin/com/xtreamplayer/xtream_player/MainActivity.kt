@@ -8,9 +8,12 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private var secureSessionHost: SecureSessionHost? = null
     private var media3Host: Media3PlayerHost? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        androidx.media3.common.util.Log.setLogLevel(androidx.media3.common.util.Log.LOG_LEVEL_OFF)
+        secureSessionHost = SecureSessionHost(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         // Reproductor Media3 con textura de Flutter (sin SurfaceView): vídeo
         // estable en Fire TV. Canal `media3_player`.
         media3Host = Media3PlayerHost(
@@ -39,16 +42,28 @@ class MainActivity : FlutterActivity() {
         super.onStart()
         media3Host?.resumeAll()
     }
+    override fun onResume() {
+        super.onResume()
+        media3Host?.resumeAll() // Mark visible; Flutter must authorize before playback.
+    }
+    override fun onPause() {
+        media3Host?.suspendAll()
+        super.onPause()
+    }
     override fun onStop() {
         media3Host?.suspendAll()
         super.onStop()
     }
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        secureSessionHost?.dispose()
+        secureSessionHost = null
         media3Host?.dispose()
         media3Host = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
     override fun onDestroy() {
+        secureSessionHost?.dispose()
+        secureSessionHost = null
         media3Host?.dispose()
         media3Host = null
         super.onDestroy()

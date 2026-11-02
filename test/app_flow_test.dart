@@ -1,3 +1,4 @@
+import 'support/security_fixture.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -22,7 +23,7 @@ void main() {
     HttpOverrides.global = null;
     SharedPreferences.setMockInitialValues(<String, Object>{});
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    serverUrl = 'http://127.0.0.1:${server.port}';
+    serverUrl = 'https://127.0.0.1:${server.port}';
 
     server.listen((HttpRequest request) async {
       final String action = request.uri.queryParameters['action'] ?? 'auth';
@@ -52,7 +53,7 @@ void main() {
 
   testWidgets('acceso al panel, Tema 1 (filas) y catálogo en pantalla',
       (WidgetTester tester) async {
-    final PrefsStore store = await PrefsStore.create();
+    final PrefsStore store = await PrefsStore.create(secureSession: testSecureSession());
     // Marca conocida: la prueba no depende del config.json del panel.
     final ConfigController config = ConfigController(
       store: store,
@@ -93,7 +94,7 @@ void main() {
     );
     await config.load();
 
-    final AppState app = AppState(store, config);
+    final AppState app = AppState(store, config, clientFactory: testPanelClient);
     await app.restore();
 
     await tester.pumpWidget(

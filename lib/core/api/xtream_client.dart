@@ -11,13 +11,16 @@ import '../models/xtream_account.dart';
 import '../models/xtream_category.dart';
 import '../utils/parse_utils.dart';
 import 'xtream_api.dart';
+import '../security/panel_http_client.dart';
 
 /// Error de comunicación o de negocio con el panel.
 class XtreamException implements Exception {
-  const XtreamException(this.message, {this.statusCode});
+  const XtreamException(this.message, {this.statusCode, this.code, this.retryAfter});
 
   final String message;
   final int? statusCode;
+  final String? code;
+  final Duration? retryAfter;
 
   @override
   String toString() => message;
@@ -26,7 +29,7 @@ class XtreamException implements Exception {
 /// Cliente HTTP de la API `player_api.php` (Xtream Codes v2 / XUI.one).
 class XtreamClient {
   XtreamClient({required this.api, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+      : _http = httpClient ?? PanelHttpClient.create();
 
   final XtreamApi api;
   final http.Client _http;
@@ -40,7 +43,7 @@ class XtreamClient {
     if (!map.containsKey('user_info')) {
       throw const XtreamException(
         'El servidor no devolvió la estructura de Xtream Codes/XUI.one. '
-        'Revisa la dirección: debe ser el panel, por ejemplo http://servidor:8080',
+        'Revisa la dirección: debe ser el panel, por ejemplo https://servidor',
       );
     }
     return XtreamAccount.fromJson(map);
@@ -166,20 +169,32 @@ class XtreamClient {
     return const <Map<String, dynamic>>[];
   }
 
+  DateTime? _retryUntil;
+  Duration? get retryRemaining {
+    final until = _retryUntil;
+    if (until == null) return null;
+    final remaining = until.difference(DateTime.now());
+    return remaining.isNegative ? null : remaining;
+  }
+  Future<Map<String, dynamic>> securityAction(String action, [Map<String, String> args = const {}]) async =>
+      asMap(await _get(api.apiUri({'action': action, ...args})));
+
   Future<dynamic> _get(Uri uri) async {
+    if (uri.scheme != 'https') throw const XtreamException('Este panel requiere una dirección HTTPS válida.', statusCode: 400);
+    final remaining = retryRemaining;
+    if (remaining != null) throw XtreamException('Espera antes de volver a conectar.', statusCode: 429, retryAfter: remaining);
     http.Response response;
     try {
-      response = await _http
-          .get(uri, headers: api.defaultHeaders)
-          .timeout(_timeout);
+      final request = http.Request('GET', uri)..followRedirects = false;
+      request.headers.addAll(api.defaultHeaders);
+      response = await http.Response.fromStream(await _http.send(request)).timeout(_timeout);
     } on TimeoutException {
       throw const XtreamException(
         'El servidor tardó demasiado en responder. Comprueba tu conexión.',
       );
     } on HandshakeException {
       throw const XtreamException(
-        'Falló el handshake TLS. Prueba con http:// o revisa el certificado '
-        'del panel.',
+        'No se pudo verificar el certificado HTTPS del panel.',
       );
     } on SocketException catch (error) {
       throw XtreamException(
@@ -187,15 +202,29 @@ class XtreamClient {
         '${error.osError == null ? '' : ' (${error.osError!.message})'}. '
         'Comprueba la dirección y el puerto.',
       );
-    } on http.ClientException catch (error) {
-      throw XtreamException('Error de red: ${error.message}');
+    } on http.ClientException {
+      throw const XtreamException('No se pudo conectar con el panel.');
+    } catch (_) {
+      throw const XtreamException('No se pudo establecer una conexión segura con el panel.');
     }
 
+    if (response.statusCode == 429) {
+      var seconds = int.tryParse(response.headers['retry-after'] ?? '') ?? 600;
+      try {
+        if (int.tryParse(response.headers['retry-after'] ?? '') == null) {
+          final base = response.headers['date'] == null ? DateTime.now() : HttpDate.parse(response.headers['date']!);
+          seconds = HttpDate.parse(response.headers['retry-after']!).difference(base).inSeconds;
+        }
+      } catch (_) { /* Conservative cooldown without a valid Retry-After. */ }
+      final delay = Duration(seconds: seconds < 1 ? 1 : seconds);
+      _retryUntil = DateTime.now().add(delay);
+      throw XtreamException('Demasiados intentos o conexiones. Espera antes de volver a conectar.', statusCode: 429, retryAfter: delay);
+    }
     if (response.statusCode != 200) {
-      throw XtreamException(
-        'El servidor respondió HTTP ${response.statusCode}.',
-        statusCode: response.statusCode,
-      );
+      String? code;
+      try { code = asString(asMap(jsonDecode(response.body))['error']); } catch (_) {}
+      throw XtreamException(_securityMessage(code, response.statusCode),
+        statusCode: response.statusCode, code: code);
     }
 
     final body = utf8.decode(response.bodyBytes, allowMalformed: true).trim();
@@ -210,7 +239,7 @@ class XtreamClient {
       if (body.startsWith('<')) {
         throw const XtreamException(
           'El servidor devolvió HTML en lugar de JSON. La dirección debe '
-          'apuntar al panel (por ejemplo http://servidor:8080).',
+          'apuntar al panel (por ejemplo https://servidor).',
         );
       }
       throw const XtreamException('La respuesta del servidor es ilegible.');
@@ -218,8 +247,21 @@ class XtreamClient {
 
     if (decoded is Map) {
       final error = asString(decoded['error']);
-      if (error != null) throw XtreamException(error);
+      if (error != null) throw XtreamException(_securityMessage(error, 403), statusCode: 403, code: error);
     }
     return decoded;
   }
+  static String _securityMessage(String? code, int status) {
+    switch (code) {
+      case 'device_limit': return 'Tu cuenta ya está en uso en otro aparato. Contacta con soporte.';
+      case 'device_revoked': return 'Este aparato fue desvinculado. Contacta con tu proveedor.';
+      case 'device_invalid': case 'device_required': case 'device_token_required':
+        return 'Es necesario vincular este aparato con tu cuenta.';
+    }
+    if (status == 401) return 'Usuario o contraseña inválidos.';
+    if (status == 403) return 'El panel no autoriza esta cuenta o esta red. Contacta con tu proveedor.';
+    if (status == 503) return 'Canal temporalmente no disponible.';
+    return 'El panel respondió HTTP $status.';
+  }
+
 }

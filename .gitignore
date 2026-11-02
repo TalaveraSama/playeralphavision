@@ -31,3 +31,6 @@ desktop.ini
 
 # ---- Backups internos del panel ----
 admin_panel/brands/*.ultimo-usado.json
+
+# Python static checker cache
+__pycache__/

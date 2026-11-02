@@ -30,6 +30,7 @@ class XtreamApi {
   final String password;
   final String userAgent;
   final String streamToken;
+  String deviceToken = '';
 
   /// Segmentos de autenticación: con token usa `/live/{token}/...`,
   /// sin token usa `/live/{usuario}/{clave}/...`.
@@ -62,6 +63,7 @@ class XtreamApi {
   Map<String, String> get defaultHeaders => <String, String>{
         'User-Agent': userAgent,
         'Accept': '*/*',
+        if (deviceToken.isNotEmpty) 'X-Device-Token': deviceToken,
       };
 
   /// Une los segmentos ya codificados a la URL base.

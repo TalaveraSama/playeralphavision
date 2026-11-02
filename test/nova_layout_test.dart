@@ -16,7 +16,7 @@ void main() {
   setUp(() async {
     HttpOverrides.global = null;
     server = await startFakeXtream();
-    serverUrl = 'http://127.0.0.1:${server.port}';
+    serverUrl = 'https://127.0.0.1:${server.port}';
   });
 
   tearDown(() async {

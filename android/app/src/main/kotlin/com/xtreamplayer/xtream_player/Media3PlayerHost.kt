@@ -30,11 +30,11 @@ class Media3PlayerHost(
 
     fun suspendAll() {
         suspended = true
-        players.values.forEach { it.suspendPlayback() }
+        players.values.forEach { it.setAppVisible(false) }
     }
     fun resumeAll() {
         suspended = false
-        players.values.forEach { it.resumePlayback() }
+        players.values.forEach { it.setAppVisible(true) }
     }
     fun dispose() {
         channel.setMethodCallHandler(null)
@@ -45,11 +45,15 @@ class Media3PlayerHost(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "create" -> {
+                if (players.isNotEmpty()) {
+                    result.error("PLAYER_ALREADY_ACTIVE", "Cierra el reproductor anterior", null)
+                    return
+                }
                 val id = nextId++
                 val mode = call.argument<String>("decoderMode") ?: "auto"
                 val bufferSeconds = call.argument<Number>("bufferSeconds")?.toInt() ?: 10
                 val player = Media3TexturePlayer(context, messenger, textureRegistry, id, mode, bufferSeconds)
-                if (suspended) player.suspendPlayback()
+                if (suspended) player.setAppVisible(false)
                 players[id] = player
                 result.success(mapOf("id" to id, "textureId" to player.textureId))
             }

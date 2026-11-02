@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xtream_player/core/api/xtream_api.dart';
@@ -9,41 +10,25 @@ import 'package:xtream_player/core/models/series_detail.dart';
 import 'package:xtream_player/core/models/stream_format.dart';
 import 'package:xtream_player/core/models/xtream_account.dart';
 
-/// Estas pruebas levantan un panel Xtream simulado en localhost y comprueban
+/// Estas pruebas simulan respuestas HTTPS sin conexiones reales y comprueban
 /// que el cliente entiende las respuestas reales de `player_api.php`:
 /// autenticación, catálogos, ficha de película, series y EPG en Base64.
 void main() {
-  late HttpServer server;
   late XtreamApi api;
   late dynamic Function(String action) responder;
   final List<String> requests = <String>[];
 
   String b64(String value) => base64.encode(utf8.encode(value));
 
-  setUp(() async {
+  XtreamClient clientFor() => XtreamClient(api: api, httpClient: MockClient((request) async {
+    final action = request.url.queryParameters['action'] ?? 'auth';
+    requests.add(action);
+    return http.Response(jsonEncode(responder(action)), 200, headers: {'content-type': 'application/json'});
+  }));
+  setUp(() {
     requests.clear();
-    server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     responder = (String action) => <String, dynamic>{};
-
-    server.listen((HttpRequest request) async {
-      final String action = request.uri.queryParameters['action'] ?? 'auth';
-      requests.add(action);
-      request.response
-        ..statusCode = HttpStatus.ok
-        ..headers.contentType = ContentType.json
-        ..write(jsonEncode(responder(action)));
-      await request.response.close();
-    });
-
-    api = XtreamApi(
-      baseUri: Uri.parse('http://127.0.0.1:${server.port}'),
-      username: 'demo',
-      password: 'demo',
-    );
-  });
-
-  tearDown(() async {
-    await server.close(force: true);
+    api = XtreamApi(baseUri: Uri.parse('https://panel.example:443'), username: 'demo', password: 'demo');
   });
 
   test('autentica y lee la cuenta del abonado', () async {
@@ -60,13 +45,13 @@ void main() {
           },
           'server_info': <String, dynamic>{
             'url': '127.0.0.1',
-            'port': '${server.port}',
+            'port': '443',
             'server_protocol': 'http',
             'timezone': 'Europe/Madrid',
           },
         };
 
-    final XtreamClient client = XtreamClient(api: api);
+    final XtreamClient client = clientFor();
     final XtreamAccount account = await client.authenticate();
 
     expect(account.isActive, isTrue);
@@ -83,7 +68,7 @@ void main() {
           'user_info': <String, dynamic>{'auth': 0, 'status': 'Disabled'},
         };
 
-    final XtreamClient client = XtreamClient(api: api);
+    final XtreamClient client = clientFor();
     final XtreamAccount account = await client.authenticate();
 
     expect(account.isActive, isFalse);
@@ -120,7 +105,7 @@ void main() {
       }
     };
 
-    final XtreamClient client = XtreamClient(api: api);
+    final XtreamClient client = clientFor();
     final categories = await client.categories(MediaKind.live);
     final items = await client.items(MediaKind.live, categoryId: '1');
 
@@ -138,7 +123,7 @@ void main() {
   });
 
   test('construye las URLs de streaming y de la lista M3U', () {
-    final String base = 'http://127.0.0.1:${server.port}';
+    final String base = 'https://panel.example';
 
     expect(api.liveUrl('101'), '$base/live/demo/demo/101.m3u8');
     expect(
@@ -179,7 +164,7 @@ void main() {
           },
         };
 
-    final XtreamClient client = XtreamClient(api: api);
+    final XtreamClient client = clientFor();
     final MediaItem item = await client.vodInfo('202');
 
     expect(item.name, 'Película de prueba');
@@ -221,7 +206,7 @@ void main() {
           },
         };
 
-    final XtreamClient client = XtreamClient(api: api);
+    final XtreamClient client = clientFor();
     final SeriesDetail detail = await client.seriesInfo('500');
 
     expect(detail.seasons.single.title, 'Temporada 1');
@@ -246,7 +231,7 @@ void main() {
           ],
         };
 
-    final XtreamClient client = XtreamClient(api: api);
+    final XtreamClient client = clientFor();
     final entries = await client.shortEpg('101');
 
     expect(entries.single.title, 'Noticias 20h');
@@ -259,23 +244,8 @@ void main() {
   });
 
   test('informa de un error legible si el servidor no es un panel', () async {
-    server.close(force: true);
-    server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    server.listen((HttpRequest request) async {
-      request.response
-        ..statusCode = HttpStatus.ok
-        ..headers.contentType = ContentType.html
-        ..write('<html><body>Not found</body></html>');
-      await request.response.close();
-    });
-
-    final XtreamClient client = XtreamClient(
-      api: XtreamApi(
-        baseUri: Uri.parse('http://127.0.0.1:${server.port}'),
-        username: 'demo',
-        password: 'demo',
-      ),
-    );
+    final XtreamClient client = XtreamClient(api: api, httpClient: MockClient((_) async =>
+      http.Response('<html><body>Not found</body></html>', 200)));
 
     await expectLater(
       client.authenticate(),

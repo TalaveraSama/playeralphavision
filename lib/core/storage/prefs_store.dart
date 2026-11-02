@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ads/ad_engine.dart';
+import '../security/secure_session.dart';
 import '../models/media_item.dart';
 import '../models/playback_buffer.dart';
 import '../models/video_decode_mode.dart';
@@ -13,7 +14,8 @@ import '../utils/parse_utils.dart';
 
 /// Persistencia local: credenciales, formato de directo, favoritos e historial.
 class PrefsStore {
-  PrefsStore._(this._prefs);
+  PrefsStore._(this._prefs, this.secure);
+  final SecureSession secure;
 
   final SharedPreferences _prefs;
 
@@ -36,9 +38,29 @@ class PrefsStore {
   static const String _kSubtitleColor = 'player.subtitle_color';
   static const String _kSubtitleSize = 'player.subtitle_size';
 
-  static Future<PrefsStore> create() async {
-    return PrefsStore._(await SharedPreferences.getInstance());
+  static Future<PrefsStore> create({SecureSession? secureSession}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final secure = secureSession ?? await SecureSession.open();
+    // Copy first, delete only after successful encrypted commit.
+    for (final key in [_kServer, _kUsername, _kPassword, _kRemoteConfig, _kFavorites, _kRecent, _kResume]) {
+      final value = prefs.get(key);
+      if (value != null) {
+        if (!secure.values.containsKey(key)) {
+          await secure.write(key, value is List ? jsonEncode(value) : value.toString());
+        }
+        await prefs.remove(key);
+      }
+    }
+    await prefs.remove(_kLastError); // Old diagnostics might contain a credential URL.
+    return PrefsStore._(prefs, secure);
   }
+
+  List<String>? _secureList(String key) {
+    final raw = secure.values[key];
+    if (raw == null) return null;
+    try { return (jsonDecode(raw) as List).cast<String>(); } catch (_) { return null; }
+  }
+  Future<void> _writeSecureList(String key, List<String> values) => secure.write(key, jsonEncode(values));
 
   VideoDecodeMode get videoDecodeMode => VideoDecodeMode.parse(
       _prefs.getString('player.exo_decoder_mode'));
@@ -61,9 +83,9 @@ class PrefsStore {
       _prefs.setBool(_kRemember, value);
 
   XtreamCredentials? get credentials {
-    final server = _prefs.getString(_kServer);
-    final username = _prefs.getString(_kUsername);
-    final password = _prefs.getString(_kPassword);
+    final server = secure.values[_kServer];
+    final username = secure.values[_kUsername];
+    final password = secure.values[_kPassword];
     if (server == null || username == null || password == null) return null;
     if (server.isEmpty || username.isEmpty) return null;
     return XtreamCredentials(
@@ -76,17 +98,17 @@ class PrefsStore {
   }
 
   Future<void> saveCredentials(XtreamCredentials credentials) async {
-    await _prefs.setString(_kServer, credentials.server);
-    await _prefs.setString(_kUsername, credentials.username);
-    await _prefs.setString(_kPassword, credentials.password);
+    await secure.write(_kServer, credentials.server);
+    await secure.write(_kUsername, credentials.username);
+    await secure.write(_kPassword, credentials.password);
     await _prefs.setString(_kUserAgent, credentials.userAgent);
     await _prefs.setBool(_kPreferHttps, credentials.preferHttps);
   }
 
   Future<void> clearCredentials() async {
-    await _prefs.remove(_kServer);
-    await _prefs.remove(_kUsername);
-    await _prefs.remove(_kPassword);
+    await secure.write(_kServer, null);
+    await secure.write(_kUsername, null);
+    await secure.write(_kPassword, null);
   }
 
   StreamFormat get streamFormat {
@@ -106,37 +128,37 @@ class PrefsStore {
       _prefs.setInt(_kBufferSeconds, PlaybackBuffer.normalize(value));
 
   List<MediaItem> get favorites {
-    final raw = _prefs.getStringList(_kFavorites) ?? const <String>[];
+    final raw = _secureList(_kFavorites) ?? const <String>[];
     return raw.map(_decodeItem).whereType<MediaItem>().toList();
   }
 
   Future<void> saveFavorites(Iterable<MediaItem> items) {
-    return _prefs.setStringList(
+    return _writeSecureList(
       _kFavorites,
       items.map((item) => jsonEncode(item.toJson())).toList(),
     );
   }
 
   List<MediaItem> get recent {
-    final raw = _prefs.getStringList(_kRecent) ?? const <String>[];
+    final raw = _secureList(_kRecent) ?? const <String>[];
     return raw.map(_decodeItem).whereType<MediaItem>().toList();
   }
 
   Future<void> saveRecent(Iterable<MediaItem> items) {
-    return _prefs.setStringList(
+    return _writeSecureList(
       _kRecent,
       items.map((item) => jsonEncode(item.toJson())).toList(),
     );
   }
 
   Future<void> clearLists() async {
-    await _prefs.remove(_kFavorites);
-    await _prefs.remove(_kRecent);
+    await secure.write(_kFavorites, null);
+    await secure.write(_kRecent, null);
   }
 
   // ------------------------------------------------- configuración remota
   Map<String, dynamic> readRemoteConfig() {
-    final String? raw = _prefs.getString(_kRemoteConfig);
+    final String? raw = secure.values[_kRemoteConfig];
     if (raw == null || raw.isEmpty) return <String, dynamic>{};
     try {
       return asMap(jsonDecode(raw));
@@ -146,7 +168,7 @@ class PrefsStore {
   }
 
   Future<void> saveRemoteConfig(Map<String, dynamic> value) =>
-      _prefs.setString(_kRemoteConfig, jsonEncode(value));
+      secure.write(_kRemoteConfig, jsonEncode(value));
 
   String? readThemeOverride() => _prefs.getString(_kThemeOverride);
 
@@ -180,19 +202,18 @@ class PrefsStore {
 
   // ------------------------------------------------------- diagnostico
   /// Ultimo error inesperado (se muestra en Ajustes para soporte).
-  String? readLastError() => _prefs.getString(_kLastError);
+  String? readLastError() => secure.values[_kLastError];
 
   Future<void> saveLastError(String message) {
-    final String clean = message.length > 400 ? message.substring(0, 400) : message;
-    return _prefs.setString(_kLastError, clean);
+    return secure.write(_kLastError, 'Se detectó un error interno. Contacta con soporte.');
   }
 
-  Future<void> clearLastError() => _prefs.remove(_kLastError);
+  Future<void> clearLastError() => secure.write(_kLastError, null);
 
   // ---------------------------------------------------- continuar viendo
   List<ResumeEntry> readResumeList() {
     final List<String> raw =
-        _prefs.getStringList(_kResume) ?? const <String>[];
+        _secureList(_kResume) ?? const <String>[];
     final List<ResumeEntry> entries = <ResumeEntry>[];
     for (final String line in raw) {
       try {
@@ -207,12 +228,12 @@ class PrefsStore {
   }
 
   Future<void> saveResumeList(Iterable<ResumeEntry> entries) =>
-      _prefs.setStringList(
+      _writeSecureList(
         _kResume,
         entries.map((ResumeEntry entry) => jsonEncode(entry.toJson())).toList(),
       );
 
-  Future<void> clearResumeList() => _prefs.remove(_kResume);
+  Future<void> clearResumeList() => secure.write(_kResume, null);
 
   MediaItem? _decodeItem(String raw) {
     try {

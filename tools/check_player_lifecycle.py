@@ -12,7 +12,7 @@ assert 'players.clear()' in host
 assert 'if (released) return' in player
 assert 'player.stop()' in player
 assert 'channel.setMethodCallHandler(null)' in player
-assert 'if (suspended) resumeWhenVisible = true' in player
+assert 'if (suspended || !appVisible) resumeWhenVisible = true' in player
 layout = (root / 'lib/widgets/nova/nova3_live_layout.dart').read_text()
 for marker in ['ScrollController()', 'itemExtent: _rowExtent', '_scroll.jumpTo(offset)',
                'focus.requestFocus()', 'oldWidget.index != widget.index']:

@@ -12,10 +12,74 @@ import '../models/stream_format.dart';
 import '../models/xtream_account.dart';
 import '../models/xtream_credentials.dart';
 import '../storage/prefs_store.dart';
+import '../security/device_session.dart';
 
 /// Estado global: sesión, cuenta, ajustes, favoritos e historial.
 class AppState extends ChangeNotifier {
-  AppState(this._store, this._config);
+  AppState(this._store, this._config, {this.clientFactory}) : _devices = DeviceSession(_store.secure);
+  final XtreamClient Function(XtreamApi)? clientFactory;
+  XtreamClient _newClient(XtreamApi api) => clientFactory?.call(api) ?? XtreamClient(api: api);
+  final DeviceSession _devices;
+  DateTime? _loginBlockedUntil;
+  final Stopwatch _heartbeatAge = Stopwatch();
+  String? _playbackBlock;
+  String? get playbackBlock => _playbackBlock;
+  Duration? get loginRetryRemaining {
+    final remaining = _loginBlockedUntil?.difference(DateTime.now());
+    return remaining != null && !remaining.isNegative ? remaining : null;
+  }
+  Future<void> preparePlayback({bool renewDevice = false}) async {
+    final current = client;
+    await _devices.attach(current, force: renewDevice);
+    if (_client != current) throw const XtreamException('La sesión cambió. Abre de nuevo el canal.');
+    if (_playbackBlock != null) throw XtreamException(_playbackBlock!, statusCode: 403);
+    if (!_heartbeatAge.isRunning || _heartbeatAge.elapsed >= const Duration(seconds: 90)) {
+      await playbackHeartbeat();
+    }
+  }
+  Future<void> playbackHeartbeat() async {
+    final current = client;
+    try {
+      try { await _devices.heartbeat(current); }
+      on XtreamException catch (error) {
+        if (!['device_invalid', 'device_required', 'device_token_required'].contains(error.code)) rethrow;
+        await _devices.attach(current, force: true);
+        await _devices.heartbeat(current); // Exactly one registration/retry.
+      }
+      if (_client == current) { _heartbeatAge.reset(); _heartbeatAge.start(); }
+    } on XtreamException catch (error) {
+      if (_client == current && (error.statusCode == 401 || error.statusCode == 403)) {
+        await blockPlayback(error.message);
+      }
+      rethrow;
+    }
+  }
+  Future<void> checkMediaDrm(PlayableItem item) async {
+    final id = item.streamId ?? item.source?.id;
+    if (id == null) return;
+    final kind = item.isLive ? 'live' : item.source?.kind == MediaKind.series ? 'series' : 'movie';
+    final data = await client.securityAction('get_drm');
+    final streams = data['streams'];
+    if (streams is! List) return;
+    for (final stream in streams) {
+      if (stream is! Map || '${stream['stream_id']}' != id || (stream['kind'] != null && stream['kind'] != kind)) continue;
+      if (stream['requires_eme'] == true || ['clearkey', 'widevine', 'playready'].contains(stream['drm_type'])) {
+        throw const XtreamException('Este contenido requiere un reproductor compatible con su DRM.', statusCode: 412);
+      }
+      // AES manifests/keys are fetched by ExoPlayer in memory, never persisted here.
+    }
+  }
+  Future<void> blockPlayback(String message) async {
+    _playbackBlock = message;
+    notifyListeners(); // The mounted player stops before credentials are cleared.
+    await logout();
+    _lastError = message;
+    notifyListeners();
+  }
+  Future<void> unlinkDevice() async {
+    await _devices.unlink(client);
+    await logout();
+  }
 
   final PrefsStore _store;
   final ConfigController _config;
@@ -100,11 +164,14 @@ class AppState extends ChangeNotifier {
       // Se aplica la marca configurada (User-Agent del panel) también al
       // restaurar la sesión guardada, no solo en el login manual.
       final XtreamCredentials effective = _effectiveCredentials(stored);
+      XtreamClient? restoringClient;
       try {
         final api = XtreamApi.fromCredentials(effective);
-        final client = XtreamClient(api: api);
+        final client = restoringClient = _newClient(api);
         final account = await client.authenticate();
         if (account.isActive) {
+          await _devices.attach(client);
+          _playbackBlock = null;
           _credentials = effective;
           _api = api;
           _client = client;
@@ -113,17 +180,22 @@ class AppState extends ChangeNotifier {
           client.dispose();
         }
       } on XtreamException catch (error) {
-        // Si el panel no llegó a responder (sin conexión, panel caído o lento)
-        // se mantiene la sesión guardada: no se piden los datos otra vez al
-        // usuario. Solo se vuelve al login si el panel rechaza las credenciales.
-        if (error.statusCode == null) {
-          final XtreamApi api = XtreamApi.fromCredentials(effective);
-          _credentials = effective;
-          _api = api;
-          _client = XtreamClient(api: api);
+        _lastError = error.message;
+        if (error.statusCode == 401 || error.statusCode == 403) {
+          await _devices.clear();
+          await _store.clearCredentials();
         }
+        if (error.statusCode == 429 && error.retryAfter != null) {
+          _loginBlockedUntil = DateTime.now().add(error.retryAfter!);
+        }
+      } catch (_) {
+        _lastError = 'No se pudo restaurar la sesión segura. Vuelve a iniciar sesión.';
+      } finally {
+        if (restoringClient != _client) restoringClient?.dispose();
       }
     }
+
+
 
     _restoring = false;
     notifyListeners();
@@ -132,6 +204,9 @@ class AppState extends ChangeNotifier {
   /// Devuelve `true` si la sesión se abrió correctamente; en caso contrario
   /// deja el motivo en [lastError].
   Future<bool> login(XtreamCredentials credentials) async {
+    if (_loggingIn) return false;
+    final remaining = loginRetryRemaining;
+    if (remaining != null) { _lastError = 'Espera ${remaining.inSeconds + 1} segundos antes de volver a conectar.'; notifyListeners(); return false; }
     _loggingIn = true;
     _lastError = null;
     notifyListeners();
@@ -140,7 +215,7 @@ class AppState extends ChangeNotifier {
     XtreamClient? client;
     try {
       final api = XtreamApi.fromCredentials(effective);
-      client = XtreamClient(api: api);
+      client = _newClient(api);
       final account = await client.authenticate();
       if (!account.isActive) {
         _lastError = account.statusText;
@@ -148,6 +223,8 @@ class AppState extends ChangeNotifier {
         return false;
       }
 
+      await _devices.attach(client);
+      _playbackBlock = null;
       _client?.dispose();
       _credentials = effective;
       _api = api;
@@ -159,6 +236,7 @@ class AppState extends ChangeNotifier {
       return true;
     } on XtreamException catch (error) {
       client?.dispose();
+      if (error.statusCode == 429 && error.retryAfter != null) _loginBlockedUntil = DateTime.now().add(error.retryAfter!);
       _lastError = error.message;
       return false;
     } on FormatException catch (error) {
@@ -167,7 +245,7 @@ class AppState extends ChangeNotifier {
       return false;
     } catch (error) {
       client?.dispose();
-      _lastError = 'Error inesperado: $error';
+      _lastError = 'No se pudo iniciar la sesión de forma segura.';
       return false;
     } finally {
       _loggingIn = false;
@@ -192,8 +270,8 @@ class AppState extends ChangeNotifier {
       username: input.username.trim(),
       password: input.password,
       userAgent: userAgent,
-      preferHttps: input.preferHttps,
-      streamToken: config.xtream.streamToken,
+      preferHttps: true,
+      streamToken: '', // Each account authenticates itself; never share a brand-wide token.
     );
   }
 
@@ -219,11 +297,16 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _heartbeatAge.stop();
+    _heartbeatAge.reset();
+    _playbackBlock ??= 'Sesión finalizada.';
+    notifyListeners();
     _client?.dispose();
     _client = null;
     _api = null;
     _account = null;
     _credentials = null;
+    await _devices.clear();
     await _store.clearCredentials();
     notifyListeners();
   }

@@ -17,6 +17,7 @@ import '../../widgets/nova/nova3_loading.dart';
 import '../../core/models/playable_item.dart';
 import '../../core/config/config_controller.dart';
 import '../../core/state/app_state.dart';
+import '../../core/api/xtream_client.dart';
 
 /// Reproductor Media3 + FFmpeg **dibujado como textura de Flutter**
 /// (SurfaceTexture). Igual que hace `video_player`/la app Purple: sin
@@ -47,6 +48,55 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   int? _textureId;
   int _playerId = 0;
   bool _unavailable = false;
+  late final AppState _securityApp;
+  Timer? _heartbeatTimer;
+  Future<bool>? _heartbeatTask;
+  bool _authorizationBlocked = false;
+  bool _securityRetryUsed = false;
+  DateTime? _playbackRetryUntil;
+  String? _playbackError;
+  void _sessionChanged() {
+    final reason = _securityApp.playbackBlock;
+    if (reason != null && mounted) {
+      _authorizationBlocked = true;
+      _cancelPlaybackTimers();
+      final id = _playerId;
+      _playerId = 0;
+      _channel?.setMethodCallHandler(null);
+      _channel = null;
+      if (id > 0) unawaited(_releaseNative(id));
+      setState(() { _textureId = null; _buffering = false; _unavailable = true; _playbackError = reason; });
+    }
+  }
+  void _cancelPlaybackTimers() {
+    _heartbeatTimer?.cancel(); _retryTimer?.cancel(); _watchdog?.cancel();
+    _autoSwitchTimer?.cancel(); _posTimer?.cancel();
+  }
+  Future<bool> _checkHeartbeat() {
+    return _heartbeatTask ??= _performHeartbeat().whenComplete(() => _heartbeatTask = null);
+  }
+  Future<bool> _performHeartbeat() async {
+    if (!mounted || !_foreground || _authorizationBlocked) return false;
+    var delay = const Duration(seconds: 90);
+    bool allowed = true;
+    try { await _securityApp.playbackHeartbeat(); }
+    on XtreamException catch (error) {
+      allowed = false;
+      if (error.statusCode == 429) {
+        final retry = error.retryAfter ?? const Duration(seconds: 180);
+        delay = retry > const Duration(seconds: 180) ? retry : const Duration(seconds: 180);
+        _playbackRetryUntil = DateTime.now().add(delay);
+      }
+    } catch (_) { allowed = false; }
+    if (mounted && _foreground && !_authorizationBlocked && !_paused) {
+      _heartbeatTimer?.cancel();
+      _heartbeatTimer = Timer(delay, () {
+        if (_foreground && !_authorizationBlocked) unawaited(_resumeNativePlayback());
+      });
+    }
+    return allowed && mounted && _foreground && !_authorizationBlocked;
+  }
+
   bool _foreground = true;
   int _loadVersion = 0;
   List<PlayerSubtitleCue> _subtitleCues = const <PlayerSubtitleCue>[];
@@ -74,6 +124,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     // Algunos telefonos devuelven las barras al entrar a pantalla completa:
     // se reafirma el modo inmersivo al abrir el reproductor.
     _forceImmersive();
+    _securityApp = context.read<AppState>();
+    _securityApp.addListener(_sessionChanged);
     WidgetsBinding.instance.addObserver(this);
     _index = widget.initialIndex.clamp(0, widget.playlist.isEmpty ? 0 : widget.playlist.length - 1);
     WakelockPlus.enable();
@@ -94,6 +146,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       _foreground = false;
+      _heartbeatTimer?.cancel();
       _loadVersion++;
       _retryTimer?.cancel(); _watchdog?.cancel(); _autoSwitchTimer?.cancel();
       _hideTimer?.cancel(); _posTimer?.cancel();
@@ -105,6 +158,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     try { await _channel?.invokeMethod<void>(method); } catch (_) { /* Native activity also guards lifecycle. */ }
   }
   Future<void> _resumeNativePlayback() async {
+    if (!await _checkHeartbeat()) return;
     await _nativeLifecycle('resumePlayback');
     if (mounted && _foreground && !_paused) await _nativeLifecycle('resume');
   }
@@ -124,7 +178,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
           'bufferSeconds': context.read<AppState>().bufferSeconds,
         });
       if (res == null) throw StateError('ExoPlayer no devolvió una instancia');
-      if (!mounted) {
+      if (!mounted || _authorizationBlocked) {
         await _host.invokeMethod('release', <String, dynamic>{'id': res['id']});
         return;
       }
@@ -147,14 +201,45 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   Future<void> _load(PlayableItem item) async {
+    if (!mounted || _authorizationBlocked) return;
+    final until = _playbackRetryUntil;
+    if (until != null && until.isAfter(DateTime.now())) {
+      setState(() { _unavailable = true; _buffering = false; _playbackError = 'Espera antes de volver a conectar. El panel limitó las peticiones.'; });
+      return;
+    }
     if (mounted) setState(() { _buffering = true; _networkSample = null; _subtitleCues = const <PlayerSubtitleCue>[]; });
     if (_unavailable && mounted) setState(() => _unavailable = false);
-    if (_foreground) _startWatchdog();
+    _watchdog?.cancel();
     final version = ++_loadVersion;
     final channel = _channel;
-    await channel?.invokeMethod('setUrl', <String, dynamic>{'url': item.url, 'headers': widget.headers, 'isLive': item.isLive});
+    try {
+      await channel?.invokeMethod<void>('stopPlayback');
+      await _securityApp.preparePlayback();
+      if (Uri.tryParse(item.url)?.scheme != 'https') {
+        throw const XtreamException('Este canal necesita una URL HTTPS válida del proveedor.', statusCode: 400);
+      }
+      await _securityApp.checkMediaDrm(item);
+      if (!mounted || version != _loadVersion || !_foreground || _authorizationBlocked) return;
+      await channel?.invokeMethod('setUrl', <String, dynamic>{'url': item.url, 'headers': _securityApp.headers, 'isLive': item.isLive});
     if (!mounted || version != _loadVersion || !_foreground) return;
+    await channel?.invokeMethod<void>('resumePlayback');
+    if (!mounted || version != _loadVersion || !_foreground || _authorizationBlocked) return;
+    _startWatchdog();
     await channel?.invokeMethod('start');
+    if (_heartbeatTimer == null || !_heartbeatTimer!.isActive) {
+      _heartbeatTimer = Timer(const Duration(seconds: 90), () => unawaited(_checkHeartbeat().then<void>((_) {})));
+    }
+    } on XtreamException catch (error) {
+      _cancelPlaybackTimers();
+      if (error.statusCode == 429) _playbackRetryUntil = DateTime.now().add(error.retryAfter ?? const Duration(seconds: 600));
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        await _securityApp.blockPlayback(error.message);
+      } else {
+        if (mounted) setState(() { _unavailable = true; _buffering = false; _playbackError = error.message; });
+      }
+    } catch (_) {
+      if (mounted && _foreground && !_authorizationBlocked) _retry();
+    }
   }
 
   Future<void> _onMethod(MethodCall call) async {
@@ -163,7 +248,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
         if (mounted) setState(() => _subtitleCues = PlayerSubtitleCue.decode(call.arguments));
         break;
       case 'onError':
-        _retry();
+        await _handlePlaybackError(call.arguments);
         break;
       case 'onBuffering':
         if (mounted) setState(() => _buffering = call.arguments == true);
@@ -181,6 +266,37 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
     }
   }
 
+  Future<void> _handlePlaybackError(dynamic payload) async {
+    if (!mounted || !_foreground || _authorizationBlocked) return;
+    final data = payload is Map ? payload : const {};
+    final status = (data['status'] as num?)?.toInt();
+    final code = data['code'];
+    if (status == 403 && !_securityRetryUsed &&
+        (['device_required', 'device_invalid'].contains(code) || data['drm'] == true)) {
+      _securityRetryUsed = true;
+      _cancelPlaybackTimers();
+      try {
+        await _securityApp.preparePlayback(renewDevice: data['drm'] != true);
+        if (mounted && _foreground && !_authorizationBlocked) await _load(_current);
+      } catch (_) { await _securityApp.blockPlayback('No se pudo autorizar este aparato. Contacta con tu proveedor.'); }
+      return;
+    }
+    if (status == 401 || status == 403) {
+      await _securityApp.blockPlayback(code == 'device_revoked'
+        ? 'Este aparato fue desvinculado. Contacta con tu proveedor.'
+        : 'El panel no autoriza la cuenta o esta red. Contacta con tu proveedor.');
+      return;
+    }
+    if (status == 429 || status == 503) {
+      _cancelPlaybackTimers();
+      if (status == 429) _playbackRetryUntil = DateTime.now().add(Duration(seconds: (data['retryAfter'] as num?)?.toInt() ?? 600));
+      setState(() { _unavailable = true; _buffering = false;
+        _playbackError = status == 429 ? 'Límite de conexiones o peticiones. Espera antes de volver a conectar.' : 'Canal temporalmente no disponible.'; });
+      return; // No automatic channel switch or retry on panel denials.
+    }
+    _retry();
+  }
+
   void _startWatchdog() {
     _watchdog?.cancel();
     _watchdog = Timer(const Duration(seconds: 12), () {
@@ -189,7 +305,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   void _retry() {
-    if (!mounted || !_foreground) return;
+    if (!mounted || !_foreground || _authorizationBlocked) return;
     _failCount++;
     if (_failCount >= 8) {
       _failCount = 0;
@@ -216,7 +332,9 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   }
 
   Future<void> _playRelative(int offset) async {
-    if (widget.playlist.length < 2) return;
+    if (_authorizationBlocked || widget.playlist.length < 2) return;
+    _securityRetryUsed = false;
+    _playbackError = null;
     _failCount = 0;
     _retryTimer?.cancel();
     _autoSwitchTimer?.cancel();
@@ -406,12 +524,15 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
   int _durMs = 0;
 
   Future<void> _togglePlay() async {
+    if (_authorizationBlocked) return;
     if (_paused) {
       await _channel?.invokeMethod('resume');
     } else {
       await _channel?.invokeMethod('pause');
     }
+    if (!mounted) return;
     setState(() => _paused = !_paused);
+    if (_paused) { _heartbeatTimer?.cancel(); } else { unawaited(_checkHeartbeat().then<void>((_) {})); }
     _wakeControls();
   }
 
@@ -588,6 +709,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
 
   @override
   void dispose() {
+    _securityApp.removeListener(_sessionChanged);
+    _heartbeatTimer?.cancel();
     _foreground = false;
     _loadVersion++;
     _channel?.setMethodCallHandler(null);
@@ -649,7 +772,7 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
           },
           onSelect: (index) { if (index != _index) _playRelative(index - _index); },
           video: ColoredBox(color: Colors.black, child: _unavailable
-              ? const Center(child: Text('Canal no disponible', style: TextStyle(color: Colors.white)))
+              ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_playbackError ?? 'Canal no disponible', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white))))
               : _textureId == null
                   ? Nova3Loading(bytesPerSecond: _networkSample)
                   : Stack(fit: StackFit.expand, children: <Widget>[
@@ -695,8 +818,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
                       const Icon(Icons.tv_off_outlined,
                           color: Colors.white70, size: 52),
                       const SizedBox(height: 14),
-                      const Text(
-                        'Canal no disponible (sin emisión)',
+                      Text(
+                        _playbackError ?? 'Canal no disponible (sin emisión)',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
@@ -705,8 +828,8 @@ class _PlayerTexturePageState extends State<PlayerTexturePage>
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Cambiando al siguiente canal\u2026',
+                      Text(
+                        _playbackError == null ? 'Cambiando al siguiente canal\u2026' : 'Vuelve atrás o contacta con soporte.',
                         style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       const SizedBox(height: 18),

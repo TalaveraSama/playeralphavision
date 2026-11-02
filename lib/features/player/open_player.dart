@@ -10,6 +10,8 @@ import '../../core/state/app_state.dart';
 import '../../widgets/ad_banner.dart';
 import 'player_texture_page.dart';
 
+bool _playerOpen = false;
+
 /// Abre el reproductor mostrando antes el anuncio de pantalla completa si toca.
 ///
 /// Centraliza el paso por publicidad para que cualquier pantalla (catálogo,
@@ -22,15 +24,26 @@ Future<void> openPlayer(
   String? categoryName,
   String? title,
 }) async {
-  if (playlist.isEmpty) return;
+  if (playlist.isEmpty || _playerOpen) return;
   if (!Platform.isAndroid) {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text('Esta edición usa ExoPlayer y solo reproduce en Android / Android TV.')));
     return;
   }
 
+  _playerOpen = true;
+  try {
   final ConfigController config = context.read<ConfigController>();
   final AppState app = context.read<AppState>();
+
+  try {
+    await app.preparePlayback();
+  } catch (_) {
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('No se pudo autorizar la reproducción. Revisa tu sesión o contacta con soporte.')));
+    return;
+  }
+  if (!context.mounted) return;
 
   // Interstitial: pantalla completa antes de entrar al reproductor.
   final AdCreative? ad = config.pickFullScreenAd(
@@ -53,4 +66,5 @@ Future<void> openPlayer(
     builder: (_) => PlayerTexturePage(playlist: playlist, initialIndex: initialIndex,
       headers: app.headers, categoryName: categoryName),
   ));
+  } finally { _playerOpen = false; }
 }

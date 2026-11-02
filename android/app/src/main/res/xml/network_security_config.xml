@@ -1,15 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Muchos paneles Xtream Codes / XUI.one sirven los streams por HTTP sin TLS
-  (http://servidor:8080/live/...). Sin esta configuración Android bloquearía
-  la reproducción en versiones 9 y superiores.
--->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
-        <trust-anchors>
-            <certificates src="system" />
-            <!-- Permite certificados propios instalados por el usuario. -->
-            <certificates src="user" />
-        </trust-anchors>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors><certificates src="system" /></trust-anchors>
     </base-config>
 </network-security-config>

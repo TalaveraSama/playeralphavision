@@ -72,6 +72,9 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Missing credentials are rejected before any release task executes.
             if (releaseSigningReady) {
                 signingConfig = signingConfigs.getByName("production")
@@ -91,6 +94,7 @@ flutter {
 }
 
 dependencies {
+    implementation("androidx.security:security-crypto:1.1.0")
 
     // ExoPlayer estándar (Media3), sin motores ni decodificadores externos.
     implementation("androidx.media3:media3-exoplayer:1.11.1")

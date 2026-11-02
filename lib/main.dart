@@ -44,18 +44,24 @@ Future<void> main() async {
       ..clearLiveImages();
   });
 
-  final PrefsStore store = await PrefsStore.create();
+  final PrefsStore store;
+  try { store = await PrefsStore.create(); }
+  catch (_) {
+    runApp(const MaterialApp(home: Scaffold(body: Center(child: Padding(
+      padding: EdgeInsets.all(24), child: Text('No se pudo abrir el almacenamiento seguro. No se guardarán credenciales sin cifrar. Contacta con soporte.'))))));
+    return;
+  }
   final ConfigController config = ConfigController(store: store);
   final AppState appState = AppState(store, config);
 
   // Cualquier fallo inesperado se guarda para verlo luego en Ajustes.
   FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
+    // Do not print arbitrary exceptions: they may contain authenticated URLs.
     unawaited(store.saveLastError(details.exceptionAsString()));
   };
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
     unawaited(store.saveLastError(error.toString()));
-    return false;
+    return true;
   };
 
   // Configuración de marca: asset del APK + caché local (rápido).

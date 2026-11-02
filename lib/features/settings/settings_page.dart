@@ -91,6 +91,17 @@ class _SettingsPageState extends State<SettingsPage> {
     await maybeShowUpdateDialog(context, config, app);
   }
 
+  Future<void> _unlinkDevice() async {
+    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Desvincular este aparato'),
+      content: const Text('Se cerrará la sesión y se liberará la vinculación en el panel. Podrás iniciar sesión de nuevo.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Desvincular'))]));
+    if (confirm != true || !mounted) return;
+    try { await context.read<AppState>().unlinkDevice(); }
+    catch (_) { if (mounted) _toast('No se pudo desvincular. Inténtalo después o contacta con soporte.'); }
+  }
+
   Future<void> _logout() async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -462,6 +473,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           const Divider(height: 24),
           _sectionTitle(theme, 'Cuenta'),
+          ListTile(leading: const Icon(Icons.link_off), title: const Text('Desvincular este aparato'), onTap: _unlinkDevice),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: OutlinedButton.icon(

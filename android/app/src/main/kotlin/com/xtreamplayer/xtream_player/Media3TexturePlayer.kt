@@ -13,6 +13,11 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import org.json.JSONObject
+import android.net.Uri
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -49,6 +54,7 @@ class Media3TexturePlayer(
     private val player: ExoPlayer
     private var surface: Surface? = null
     private var released = false
+    private var appVisible = true
     private var suspended = false
     private var resumeWhenVisible = false
 
@@ -91,8 +97,26 @@ class Media3TexturePlayer(
 
             override fun onPlayerError(error: PlaybackException) {
                 clearCues()
-                android.util.Log.e("TEXPLAYER", "PLAYER_ERROR: " + error.message, error)
-                channel.invokeMethod("onError", null)
+                val http = generateSequence(error as Throwable?) { it.cause }
+                    .filterIsInstance<HttpDataSource.InvalidResponseCodeException>().firstOrNull()
+                val allowed = setOf("device_required", "device_invalid", "device_revoked", "device_limit")
+                val code = try { JSONObject(http?.responseBody?.toString(Charsets.UTF_8) ?: "{}").optString("error") }
+                    catch (_: Exception) { "" }
+                val headers = http?.headerFields ?: emptyMap()
+                val retry = headers.entries.firstOrNull { it.key.equals("Retry-After", true) }?.value?.firstOrNull()
+                var retrySeconds = retry?.toLongOrNull()
+                if (retrySeconds == null && retry != null) {
+                    try {
+                        val format = java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", java.util.Locale.US)
+                        val serverDate = headers.entries.firstOrNull { it.key.equals("Date", true) }?.value?.firstOrNull()
+                        val base = serverDate?.let { format.parse(it)?.time } ?: System.currentTimeMillis()
+                        retrySeconds = ((format.parse(retry)?.time ?: base) - base) / 1000
+                    } catch (_: Exception) { }
+                }
+                val drm = http?.dataSpec?.uri?.path?.contains("/drm/") == true
+                channel.invokeMethod("onError", mapOf("status" to http?.responseCode,
+                    "code" to if (code in allowed) code else "", "drm" to drm,
+                    "retryAfter" to maxOf(1L, retrySeconds ?: 600L)))
             }
 
             override fun onPlaybackStateChanged(state: Int) {
@@ -158,16 +182,6 @@ class Media3TexturePlayer(
     private fun refreshTracks() {
         audioRefs.clear()
         textRefs.clear()
-        try {
-            val dbg = player.currentTracks.groups.mapIndexed { gi, g ->
-                "g" + gi + ":type=" + g.type + ":len=" + g.length +
-                    ":sup=" + (0 until g.length).joinToString(",") { g.isTrackSupported(it).toString() } +
-                    ":lang=" + (0 until g.length).joinToString(",") { (g.getTrackFormat(it).language ?: "-") }
-            }
-            android.util.Log.e("TEXPLAYER", "tracks-dump " + dbg)
-        } catch (e: Exception) {
-            android.util.Log.e("TEXPLAYER", "tracks-dump err " + e.message)
-        }
         for (group in player.currentTracks.groups) {
             for (i in 0 until group.length) {
                 if (!group.isTrackSupported(i)) continue
@@ -224,14 +238,25 @@ class Media3TexturePlayer(
         // El User-Agent del panel (AlphaVision-Player) debe ir SIEMPRE; si no,
         // XUI.one devuelve una pagina HTML y el HLS falla con #EXTM3U.
         val ua = headers["User-Agent"]?.takeIf { it.isNotBlank() } ?: "AlphaVision-Player"
+        require(Uri.parse(url).scheme.equals("https", true)) { "HTTPS requerido" }
         val ds = DefaultHttpDataSource.Factory()
+            .setConnectTimeoutMs(8000)
+            .setReadTimeoutMs(12000)
             .setUserAgent(ua)
             .setDefaultRequestProperties(headers)
         val item = MediaItem.Builder().setUri(url).build()
-        return if (url.contains(".m3u8")) {
-            HlsMediaSource.Factory(ds).createMediaSource(item)
+        val policy = object : DefaultLoadErrorHandlingPolicy() {
+            override fun getRetryDelayMsFor(info: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+                val failure = generateSequence(info.exception as Throwable?) { it.cause }
+                    .filterIsInstance<HttpDataSource.InvalidResponseCodeException>().firstOrNull()
+                if (failure != null && failure.responseCode in setOf(401, 403, 429, 503)) return C.TIME_UNSET
+                return super.getRetryDelayMsFor(info)
+            }
+        }
+        return if ((Uri.parse(url).path ?: "").lowercase().endsWith(".m3u8")) {
+            HlsMediaSource.Factory(ds).setLoadErrorHandlingPolicy(policy).createMediaSource(item)
         } else {
-            ProgressiveMediaSource.Factory(ds).createMediaSource(item)
+            ProgressiveMediaSource.Factory(ds).setLoadErrorHandlingPolicy(policy).createMediaSource(item)
         }
     }
 
@@ -242,18 +267,20 @@ class Media3TexturePlayer(
                 val url = call.argument<String>("url") ?: ""
                 val headers = call.argument<Map<String, String>>("headers") ?: emptyMap()
                 val isLive = call.argument<Boolean>("isLive") ?: true
-                android.util.Log.e("TEXPLAYER", "setUrl url=" + url + " live=" + isLive + " headers=" + headers)
                 clearCues()
+                player.stop()
+                player.clearMediaItems()
                 player.setMediaSource(buildSource(url, headers))
                 result.success(null)
             }
+            "stopPlayback" -> { player.stop(); player.clearMediaItems(); result.success(null) }
             "start" -> {
-                if (suspended) resumeWhenVisible = true else { player.prepare(); player.play() }
+                if (suspended || !appVisible) resumeWhenVisible = true else { player.prepare(); player.play() }
                 result.success(null)
             }
             "pause" -> { resumeWhenVisible = false; player.pause(); result.success(null) }
             "resume" -> {
-                if (suspended) resumeWhenVisible = true else player.play()
+                if (suspended || !appVisible) resumeWhenVisible = true else player.play()
                 result.success(null)
             }
             "suspendPlayback" -> { suspendPlayback(); result.success(null) }
@@ -278,6 +305,12 @@ class Media3TexturePlayer(
         }
     }
 
+    fun setAppVisible(visible: Boolean) {
+        appVisible = visible
+        if (!visible) suspendPlayback()
+        // Returning requires Flutter to complete the panel heartbeat first.
+    }
+
     fun suspendPlayback() {
         if (released || suspended) return
         resumeWhenVisible = player.playWhenReady
@@ -286,7 +319,7 @@ class Media3TexturePlayer(
     }
 
     fun resumePlayback() {
-        if (released || !suspended) return
+        if (released || !suspended || !appVisible) return
         suspended = false
         player.prepare()
         if (player.isCurrentMediaItemLive) player.seekToDefaultPosition()

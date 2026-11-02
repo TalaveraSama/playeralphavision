@@ -1,3 +1,4 @@
+import 'security_fixture.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -114,13 +115,13 @@ Future<({ConfigController config, AppState app})> pumpNovaApp(
   Map<String, Object>? prefs,
 }) async {
   SharedPreferences.setMockInitialValues(prefs ?? novaInitialPrefs());
-  final PrefsStore store = await PrefsStore.create();
+  final PrefsStore store = await PrefsStore.create(secureSession: testSecureSession());
   final ConfigController config = ConfigController(
     store: store,
     bundledJson: novaConfig(),
   );
   await config.load();
-  final AppState app = AppState(store, config);
+  final AppState app = AppState(store, config, clientFactory: testPanelClient);
   await app.restore();
 
   await tester.pumpWidget(XtreamPlayerApp(appState: app, config: config));

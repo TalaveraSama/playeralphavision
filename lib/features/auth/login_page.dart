@@ -41,6 +41,8 @@ class _LoginPageState extends State<LoginPage> {
   late final TextEditingController _username;
   late final TextEditingController _password;
   bool _obscurePassword = true;
+  Timer? _cooldownTick;
+  bool _wasCoolingDown = false;
 
   final FocusNode _serverFocus = FocusNode(debugLabel: 'login-servidor', skipTraversal: true);
   final FocusNode _usernameFocus = FocusNode(debugLabel: 'login-usuario', skipTraversal: true);
@@ -51,6 +53,12 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    _cooldownTick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final active = context.read<AppState>().loginRetryRemaining != null;
+      if (active || _wasCoolingDown) setState(() {});
+      _wasCoolingDown = active;
+    });
     final AppState app = context.read<AppState>();
     final ConfigController config = context.read<ConfigController>();
     final XtreamCredentials? saved = app.credentials;
@@ -64,6 +72,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    _cooldownTick?.cancel();
     _server.dispose();
     _username.dispose();
     _password.dispose();
@@ -286,7 +295,7 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(height: 22),
                               FilledButton(
                                 focusNode: _submitFocus,
-                                onPressed: app.loggingIn ? null : _submit,
+                                onPressed: app.loggingIn || app.loginRetryRemaining != null ? null : _submit,
                                 child: Padding(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
@@ -299,8 +308,8 @@ class _LoginPageState extends State<LoginPage> {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : const Text(
-                                          'Iniciar sesión',
+                                      : Text(
+                                          app.loginRetryRemaining == null ? 'Iniciar sesión' : 'Espera ${app.loginRetryRemaining!.inSeconds + 1} s',
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,

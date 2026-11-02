@@ -3,6 +3,6 @@
 /// `kAppVersion` debe coincidir con la `version:` de `pubspec.yaml`. El script
 /// `tools/build_whitelabel.ps1` la actualiza automáticamente al generar un APK
 /// de marca blanca.
-const String kAppVersion = '1.2.49';
+const String kAppVersion = '1.2.50';
 
-const String kAppBuild = '1053';
+const String kAppBuild = '1054';
