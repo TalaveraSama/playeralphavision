@@ -6,9 +6,9 @@ function Invoke-FlutterLogged {
     [Parameter(Mandatory = $true)][string[]]$Arguments,
     [Parameter(Mandatory = $true)][string]$LogPath
   )
-  # These are switches/subcommands, not an arbitrary shell command.
+  # Allow simple tokens and comma-separated platform lists, never shell syntax.
   foreach ($argument in $Arguments) {
-    if ($argument -notmatch '^[A-Za-z0-9_-]+$') {
+    if ($argument -notmatch '\A[A-Za-z0-9_-]+(?:,[A-Za-z0-9_-]+)*\z') {
       throw "Unsupported Flutter argument: $argument"
     }
   }

@@ -10,6 +10,7 @@ try {
   $fakeScript = @'
 @echo off
 echo Built fake APK
+echo ARGS: %*
 echo WARNING: Java native access 1>&2
 if "%1"=="--fail" exit /b 23
 exit /b 0
@@ -31,9 +32,24 @@ exit /b 0
   if ($text -notmatch 'WARNING: Java native access' -or $text -notmatch 'Built fake APK') { throw 'Missing stdout/stderr' }
   if ($text -match 'NativeCommandError|CategoryInfo') { throw 'PowerShell error formatting leaked into log' }
   if ($Error.Count -ne $before) { throw 'Warnings created PowerShell errors' }
+  $code = Invoke-FlutterLogged -Arguments @('build', 'apk', '--release', '--target-platform', 'android-arm,android-arm64,android-x64') -LogPath $log
+  if ($code -ne 0) { throw "Universal platform list failed: $code" }
+  $text = Get-Content -LiteralPath $log -Raw
+  if (-not $text.Contains('ARGS: build apk --release --target-platform android-arm,android-arm64,android-x64')) {
+    throw 'Platform list was not passed intact to flutter.bat'
+  }
+  foreach ($bad in @('android-arm&whoami', 'a|whoami', 'a>file', 'a%PATH%', 'a;whoami', '$(whoami)', 'a,,b', 'a, b', ',a', 'a,', "a`n")) {
+    $rejected = $false
+    try { $null = Invoke-FlutterLogged -Arguments @($bad) -LogPath $log }
+    catch {
+      if ($_.Exception.Message -notlike 'Unsupported Flutter argument:*') { throw }
+      $rejected = $true
+    }
+    if (-not $rejected) { throw "Unsafe or malformed token accepted: $bad" }
+  }
   $code = Invoke-FlutterLogged -Arguments @('--fail') -LogPath $log
   if ($code -ne 23) { throw "Expected failure code 23, got $code" }
-  Write-Host 'PASS: plain warnings, real exit codes, spaced paths, ampersands and multiple Flutter launchers.'
+  Write-Host 'PASS: platform lists, rejection of unsafe tokens, plain warnings, real exit codes and multiple Flutter launchers.'
 } finally {
   $env:Path = $oldPath
   Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue

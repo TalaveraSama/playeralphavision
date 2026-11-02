@@ -66,7 +66,7 @@ if (-not $env:ANDROID_HOME) {
 $versionLog = Join-Path $projectRoot 'build\whitelabel-flutter-version.log'
 $versionCode = Invoke-FlutterLogged -Arguments @('--version') -LogPath $versionLog
 if ($versionCode -ne 0) { Fail "Flutter no pudo arrancar. Revisa $versionLog" }
-Info ("Flutter: " + (Get-Content -LiteralPath $versionLog -Encoding UTF8 | Select-Object -First 1))
+Info ("Flutter: " + (Get-Content -LiteralPath $versionLog -Encoding UTF8 | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1))
 
 # ---------------------------------------------------------------- config
 $brandsDir = Join-Path $projectRoot 'admin_panel\brands'

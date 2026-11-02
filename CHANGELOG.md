@@ -1,3 +1,7 @@
+# 1.2.60+1064 — Argumentos de arquitectura universal
+
+Corregido `Unsupported Flutter argument: android-arm,android-arm64,android-x64`: el validador permite listas de tokens separadas por comas y sigue rechazando sintaxis de shell. Prueba Windows ampliada para verificar la lista recibida por un Flutter simulado y rechazo de entradas inseguras/malformadas. La línea de versión de Flutter ignora líneas vacías iniciales. Checks estáticos y patrón de validación comprobados; no se ejecutaron Windows/Flutter/Gradle ni se generó APK aquí. Se mantiene un único APK universal por defecto. Esto no confirma resuelto el cierre de VLC reportado.
+
 # 1.2.59+1063 — Una sola APK universal
 
 Los dos CMD habituales generan únicamente el APK universal. Se retira la generación incondicional por arquitectura: `-SplitAbi` queda opcional. Plataformas explícitas ARM32/ARM64/x86_64 y verificación de las bibliotecas Flutter/VLC dentro del APK antes de entregarlo. minSdk 24 conservado por Fire OS compatible y soporte previsto a teléfonos Android 9+. No equivale a certificar todos los equipos ni resolver el cierre de VLC. Detalles: [APK_UNIVERSAL.md](APK_UNIVERSAL.md). Checks estáticos únicamente, sin APK compilado aquí.
